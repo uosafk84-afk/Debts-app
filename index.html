@@ -385,9 +385,25 @@ async function initFirebaseSync(){
       }
       setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':'☁️ Synced',snap.metadata.fromCache?'offline':'online');
     },()=>{setSyncBadge('⚠️ Sync error','offline')});
-    window.addEventListener('online',()=>setSyncBadge('☁️ Synced','online'));
+    window.addEventListener('online',()=>{setSyncBadge('☁️ Synced','online');refreshFromCloud();});
     window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
   }catch(e){setSyncBadge('📴 Local only','offline')}
+}
+async function refreshFromCloud(){
+  if(!fbReady || !db || !navigator.onLine) return;
+  try{
+    const snap=await db.collection('shopDebts').doc('state').get({source:'server'});
+    if(snap.exists){
+      const incoming=snap.data();
+      if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
+        applyingRemote=true;state.debts=incoming.debts||[];
+        storageSet(KEY,JSON.stringify(state));
+        renderAll();
+        applyingRemote=false;
+      }
+    }
+    setSyncBadge('☁️ Synced','online');
+  }catch(e){}
 }
 function cloudSave(){ if(fbReady && db && !applyingRemote){ db.collection('shopDebts').doc('state').set({debts:state.debts}).catch(()=>{}); } }
 let saveToastTimer=null;
@@ -427,7 +443,10 @@ async function init(){
   scheduleFlush();
 }
 function scheduleFlush(){
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') forceFlush(); });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden') forceFlush();
+    else if(document.visibilityState==='visible') refreshFromCloud();
+  });
   window.addEventListener('blur',forceFlush);
   window.addEventListener('pagehide',forceFlush);
   window.addEventListener('beforeunload',forceFlush);
