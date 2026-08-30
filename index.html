@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop Debts</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#18284a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Shop Debts">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-app-compat.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-firestore-compat.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<style>
+:root{
+  --bg:#eef1f6; --surface:#FFFFFF;
+  --glass:rgba(255,255,255,.06); --glassBorder:rgba(255,255,255,.55);
+  --text:#1C1C1E; --text2:#5b5b60;
+  --blue:#0a66d6; --green:#1f9d55; --red:#d6404a; --orange:#c9791a; --navy:#18284a;
+  --sep:rgba(60,60,67,.13);
+  --shadow:0 14px 34px rgba(24,40,74,.16),0 2px 8px rgba(24,40,74,.08);
+  --ease:cubic-bezier(.22,1,.36,1); --spring:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;
+  color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  background:var(--bg);background-attachment:fixed;overflow-x:hidden;position:relative;
+}
+body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(50px) saturate(160%);opacity:1;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(60,90,170,.55), transparent 32%),
+    radial-gradient(circle at 88% 4%, rgba(120,60,90,.4), transparent 30%),
+    radial-gradient(circle at 92% 60%, rgba(214,64,74,.28), transparent 34%),
+    radial-gradient(circle at 6% 72%, rgba(40,60,120,.3), transparent 32%),
+    linear-gradient(180deg,#dbe2f0,#eef1f6 42%,#f3ecec);
+}
+.app{max-width:900px;margin:auto;padding:12px 14px 40px;position:relative;z-index:1}
+.glass{background:var(--glass);border:1px solid var(--glassBorder);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.8);
+  border-radius:20px;backdrop-filter:saturate(160%);-webkit-backdrop-filter:saturate(160%);
+  position:relative;overflow:hidden}
+.glass::before{content:"";position:absolute;top:-40%;left:-20%;width:70%;height:90%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.5),transparent 65%);opacity:.55;transform:rotate(-12deg);z-index:0}
+.glass>*{position:relative;z-index:1}
+header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:8px;z-index:20}
+.title{font-size:20px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:9px}
+.title img{width:32px;height:32px;border-radius:9px;display:block;box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.sub{font-size:11.5px;color:var(--text2);margin-top:2px;font-weight:500}
+nav{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+nav button{border:1px solid var(--glassBorder);background:var(--glass);backdrop-filter:saturate(160%);
+  color:var(--text2);padding:10px 14px;border-radius:999px;font-weight:600;
+  font-size:12.5px;cursor:pointer;transition:background-color .2s var(--ease),color .2s var(--ease),transform .12s var(--spring);
+  flex:1 1 auto;text-align:center;white-space:nowrap;box-shadow:0 4px 12px rgba(24,40,74,.08),inset 0 1px 0 rgba(255,255,255,.7);
+  display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit}
+nav button:active{transform:scale(.95)}
+nav button.navActive{background:var(--navy);color:#fff;border-color:transparent;box-shadow:0 6px 18px rgba(24,40,74,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+button{font-family:inherit}
+button.primary{border:1px solid rgba(24,40,74,.5);background:rgba(24,40,74,.85);color:#fff;padding:11px 18px;border-radius:16px;font-weight:700;
+  font-size:13.5px;cursor:pointer;transition:transform .12s var(--spring),background-color .15s;box-shadow:0 6px 16px rgba(24,40,74,.3),inset 0 1px 0 rgba(255,255,255,.2);white-space:nowrap}
+button.primary:active{transform:scale(.95)}
+.dangerBtn{border:1px solid rgba(214,64,74,.5);background:rgba(214,64,74,.12);color:#a52530;padding:7px 12px;
+  border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;transition:transform .12s var(--spring),background-color .15s}
+.dangerBtn:active{transform:scale(.94);background:rgba(214,64,74,.24)}
+.secondaryBtn{border:1px solid rgba(10,102,214,.45);background:rgba(10,102,214,.10);color:#0a4fa0;padding:7px 12px;
+  border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;transition:transform .12s var(--spring),background-color .15s}
+.secondaryBtn:active{transform:scale(.94);background:rgba(10,102,214,.2)}
+.settleBtn{border:1px solid rgba(31,157,85,.5);background:rgba(31,157,85,.12);color:#166b3a;padding:7px 12px;
+  border-radius:10px;font-weight:600;font-size:12px;cursor:pointer;transition:transform .12s var(--spring),background-color .15s}
+.settleBtn:active{transform:scale(.94);background:rgba(31,157,85,.24)}
+.view{display:none}
+.view.active{display:block;animation:viewIn .3s var(--ease)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+@media(min-width:560px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{padding:14px;display:flex;align-items:center;gap:10px}
+.card .cardText{display:flex;flex-direction:column;min-width:0}
+.iconBadge{width:32px;height:32px;min-width:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-size:15px;box-shadow:0 3px 8px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.5);color:#fff}
+.iconBadge.navy{background:linear-gradient(160deg,#3f5b96,#18284a)}
+.iconBadge.red{background:linear-gradient(160deg,#ff8a80,#d6404a)}
+.iconBadge.orange{background:linear-gradient(160deg,#ffb04d,#c9791a)}
+.iconBadge.green{background:linear-gradient(160deg,#6fe08a,#1f9d55)}
+.label{font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.value{font-size:16.5px;font-weight:700;margin-top:2px;color:var(--text)}
+.section{margin:10px 0;padding:16px}
+.section h2{margin:0 0 10px;font-size:15.5px;font-weight:700;letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
+.small{font-size:11.5px;color:var(--text2)}
+.empty{padding:18px;text-align:center;color:var(--text2);font-size:13px}
+.debtCard{padding:14px 16px;margin-bottom:10px}
+.debtTop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.debtName{font-size:15.5px;font-weight:700;cursor:pointer}
+.debtName:active{opacity:.7}
+.debtPhone{font-size:11.5px;color:var(--text2);margin-top:1px}
+.debtAmt{text-align:right}
+.debtAmt .rem{font-size:18px;font-weight:800}
+.debtAmt .rem.recv{color:var(--green)}
+.debtAmt .rem.pay{color:var(--red)}
+.debtAmt .of{font-size:11px;color:var(--text2)}
+.debtMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text2);align-items:center}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.badge.overdue{background:rgba(214,64,74,.14);color:#a52530}
+.badge.duesoon{background:rgba(201,121,26,.14);color:#8a5a13}
+.badge.short{background:rgba(201,121,26,.14);color:#8a5a13}
+.badge.long{background:rgba(10,102,214,.12);color:#0a4fa0}
+.badge.settled{background:rgba(31,157,85,.14);color:#166b3a}
+.badge.recv{background:rgba(31,157,85,.14);color:#166b3a}
+.badge.pay{background:rgba(214,64,74,.14);color:#a52530}
+.debtNotes{margin-top:8px;font-size:12px;color:var(--text2);font-style:italic}
+.debtActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.formGrid{grid-template-columns:1fr}}
+.formGrid label{font-size:12.5px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px}
+.formGrid .full{grid-column:1/-1}
+input[type=text],input[type=tel],input[type=number],input[type=date],textarea,select{
+  width:100%;border:1px solid rgba(60,60,67,.18);background:rgba(255,255,255,.7);border-radius:10px;padding:9px 11px;
+  color:var(--text);outline:none;font-size:14px;font-family:inherit;transition:box-shadow .15s}
+input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(10,102,214,.18);border-color:rgba(10,102,214,.5)}
+textarea{resize:vertical;min-height:56px}
+.choice2{display:flex;gap:8px}
+.choice2 label{flex:1;border:1px solid rgba(60,60,67,.18);border-radius:12px;padding:10px;text-align:center;font-weight:600;font-size:12.5px;
+  cursor:pointer;background:rgba(255,255,255,.55);color:var(--text2);transition:.15s}
+.choice2 input{display:none}
+.choice2 label.cRecv:has(input:checked){background:rgba(31,157,85,.16);border-color:rgba(31,157,85,.5);color:#166b3a}
+.choice2 label.cPay:has(input:checked){background:rgba(214,64,74,.14);border-color:rgba(214,64,74,.5);color:#a52530}
+.choice2 label.tShort:has(input:checked){background:rgba(201,121,26,.16);border-color:rgba(201,121,26,.5);color:#8a5a13}
+.choice2 label.tLong:has(input:checked){background:rgba(10,102,214,.14);border-color:rgba(10,102,214,.5);color:#0a4fa0}
+.formActions{display:flex;gap:10px;margin-top:16px}
+.syncBadge{display:inline-block;margin-top:2px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:8px}
+.syncBadge.online{background:rgba(31,157,85,.14);color:#166b3a;border:1px solid rgba(31,157,85,.3)}
+.syncBadge.offline{background:rgba(201,121,26,.14);color:#8a5a13;border:1px solid rgba(201,121,26,.3)}
+.modalOverlay{position:fixed;inset:0;background:rgba(15,20,35,.36);z-index:50;display:flex;align-items:center;
+  justify-content:center;padding:16px;backdrop-filter:saturate(140%);animation:fadeIn .2s var(--ease)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modalBox{max-width:320px;width:100%;padding:20px;border-radius:20px;text-align:center;
+  animation:modalIn .28s var(--ease);background:rgba(255,255,255,.92);backdrop-filter:saturate(160%)}
+@keyframes modalIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.modalMsg{font-size:14px;white-space:pre-line;margin-bottom:16px;color:var(--text)}
+.modalBtns{display:flex;gap:10px}
+.mbPrimary,.mbSecondary{flex:1;padding:11px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;border:none;font-family:inherit}
+.mbPrimary{background:var(--navy);color:#fff}
+.mbSecondary{background:rgba(120,120,128,.14);color:var(--text)}
+.mbPrimary:active,.mbSecondary:active{transform:scale(.96)}
+.payRow{display:flex;gap:10px;text-align:left;margin-bottom:10px}
+.payRow>div{flex:1}
+.saveToast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);z-index:60;
+  background:rgba(24,32,50,.9);color:#fff;font-size:12.5px;font-weight:600;padding:8px 16px;border-radius:999px;
+  box-shadow:0 8px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s var(--ease),transform .25s var(--ease)}
+.saveToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.fab{position:fixed;right:18px;bottom:22px;z-index:15;border:none;background:var(--navy);color:#fff;width:56px;height:56px;
+  border-radius:50%;font-size:26px;box-shadow:0 10px 24px rgba(24,40,74,.4);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fab:active{transform:scale(.92)}
+.searchBar{display:flex;gap:8px;margin-bottom:10px}
+.searchBar input{flex:1}
+.chips{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.chip{border:1px solid rgba(60,60,67,.18);background:rgba(255,255,255,.55);color:var(--text2);padding:6px 13px;
+  border-radius:999px;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s}
+.chip.chipActive{background:var(--navy);color:#fff;border-color:transparent}
+.statRow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--sep);font-size:13px}
+.statRow:last-child{border-bottom:none}
+.statRow b{font-weight:700}
+.payHistItem{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
+.payHistItem:last-child{border-bottom:none}
+.backupBox{margin-bottom:14px}
+.fileLbl{display:inline-block;border:1px dashed rgba(10,102,214,.5);background:rgba(10,102,214,.08);color:#0a4fa0;
+  padding:10px 16px;border-radius:12px;font-weight:600;font-size:12.5px;cursor:pointer;text-align:center}
+</style>
+</head>
+<body>
+<div id="modalOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass">
+    <div id="modalMsg" class="modalMsg"></div>
+    <div class="modalBtns" id="modalBtns"></div>
+  </div>
+</div>
+<div id="payOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="payTitle">Record Payment</div>
+    <div class="payRow">
+      <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN)</label><input type="number" id="payAmount" step="0.01" min="0"></div>
+      <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label><input type="date" id="payDate"></div>
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closePayModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmPayment()">Record</button>
+    </div>
+  </div>
+</div>
+<div id="saveToast" class="saveToast">✓ Saved</div>
+<div class="app">
+<header class="glass">
+  <div><div class="title"><img src="icon-192.png" alt=""> Shop Debts</div><div class="sub">Who owes you, who you owe</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
+  <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
+</header>
+<nav>
+<button type="button" class="navActive" data-view="dashboard" onclick="show('dashboard')"><span class="iconBadge navy">🏠</span>Dashboard</button>
+<button type="button" data-view="recv" onclick="show('recv')"><span class="iconBadge green">🟢</span>Owed to You</button>
+<button type="button" data-view="pay" onclick="show('pay')"><span class="iconBadge red">🔴</span>You Owe</button>
+<button type="button" data-view="settled" onclick="show('settled')"><span class="iconBadge navy">✅</span>Settled</button>
+<button type="button" data-view="backup" onclick="show('backup')"><span class="iconBadge orange">💾</span>Backup</button>
+</nav>
+
+<section id="dashboard" class="view active">
+<div class="cards">
+<div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Position</div><div class="value" id="dashNet">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge red">⚠️</span><div class="cardText"><div class="label">Overdue</div><div class="value" id="dashOverdue">0</div></div></div>
+<div class="card glass"><span class="iconBadge orange">⏳</span><div class="cardText"><div class="label">Due in 7 Days</div><div class="value" id="dashDueSoon">0</div></div></div>
+<div class="card glass"><span class="iconBadge navy">📋</span><div class="cardText"><div class="label">Active Debts</div><div class="value" id="dashActive">0</div></div></div>
+</div>
+<div class="section glass"><h2>⚠️ Overdue</h2><div id="overdueList"></div></div>
+<div class="section glass"><h2>⏳ Due Soon (next 7 days)</h2><div id="dueSoonList"></div></div>
+<div class="section glass"><h2>🕘 Recently Added</h2><div id="recentList"></div></div>
+</section>
+
+<section id="recv" class="view">
+<div class="section glass">
+<h2>🟢 Owed to You (Customers)</h2>
+<div class="searchBar"><input type="text" id="recvSearch" placeholder="Search by name or phone…" oninput="renderList('recvList','receivable','recvSearch','recvChip')"></div>
+<div class="chips" id="recvChip">
+  <div class="chip chipActive" data-t="all" onclick="setChip('recvChip',this,'recvList','receivable','recvSearch')">All</div>
+  <div class="chip" data-t="short" onclick="setChip('recvChip',this,'recvList','receivable','recvSearch')">Short Term</div>
+  <div class="chip" data-t="long" onclick="setChip('recvChip',this,'recvList','receivable','recvSearch')">Long Term</div>
+</div>
+<div id="recvList"></div>
+</div>
+</section>
+
+<section id="pay" class="view">
+<div class="section glass">
+<h2>🔴 You Owe (Suppliers)</h2>
+<div class="searchBar"><input type="text" id="paySearch" placeholder="Search by name or phone…" oninput="renderList('payList','payable','paySearch','payChip')"></div>
+<div class="chips" id="payChip">
+  <div class="chip chipActive" data-t="all" onclick="setChip('payChip',this,'payList','payable','paySearch')">All</div>
+  <div class="chip" data-t="short" onclick="setChip('payChip',this,'payList','payable','paySearch')">Short Term</div>
+  <div class="chip" data-t="long" onclick="setChip('payChip',this,'payList','payable','paySearch')">Long Term</div>
+</div>
+<div id="payList"></div>
+</div>
+</section>
+
+<section id="settled" class="view"><div class="section glass"><h2>✅ Settled</h2><div id="settledList"></div></div></section>
+
+<section id="statement" class="view">
+<div class="section glass">
+<h2 id="stTitle">📄 Statement</h2>
+<div id="stBody"></div>
+<div class="formActions">
+<button type="button" class="secondaryBtn" style="flex:1;padding:11px" onclick="show(lastListView||'dashboard')">Back</button>
+<button type="button" class="primary" style="flex:1" onclick="copyStatement()">📋 Copy Statement</button>
+</div>
+</div>
+</section>
+
+<section id="addForm" class="view">
+<div class="section glass">
+<h2 id="formTitle">➕ Add Debt</h2>
+<div class="formGrid">
+<div class="full"><label>Who does this debt involve?</label>
+  <div class="choice2">
+    <label class="cRecv"><input type="radio" name="fDir" value="receivable" checked><span>🟢 Customer Owes You</span></label>
+    <label class="cPay"><input type="radio" name="fDir" value="payable"><span>🔴 You Owe Supplier</span></label>
+  </div>
+</div>
+<div class="full"><label>Name *</label><input type="text" id="fName" placeholder="e.g. Rahim Khan"></div>
+<div><label>Phone (optional)</label><input type="tel" id="fPhone" placeholder="07xxxxxxxx"></div>
+<div><label>Address (optional)</label><input type="text" id="fAddress" placeholder="Shop / area / village"></div>
+<div><label>Amount (AFN) *</label><input type="number" id="fAmount" step="0.01" min="0" placeholder="0"></div>
+<div><label>Extra Charge / Interest (optional)</label><input type="number" id="fExtra" step="0.01" min="0" placeholder="0"></div>
+<div><label>Date Given</label><input type="date" id="fDateGiven"></div>
+<div><label>Due Date (optional)</label><input type="date" id="fDueDate"></div>
+<div class="full"><label>Term</label>
+  <div class="choice2">
+    <label class="tShort"><input type="radio" name="fTerm" value="short" checked><span>⏱️ Short Term</span></label>
+    <label class="tLong"><input type="radio" name="fTerm" value="long"><span>📅 Long Term</span></label>
+  </div>
+</div>
+<div class="full"><label>Notes (optional)</label><textarea id="fNotes" placeholder="What was bought/sold, agreement details, etc."></textarea></div>
+</div>
+<div class="formActions">
+<button type="button" class="secondaryBtn" style="flex:1;padding:11px" onclick="cancelForm()">Cancel</button>
+<button type="button" class="primary" style="flex:1" onclick="saveDebtForm()">Save Debt</button>
+</div>
+</div>
+</section>
+
+<section id="backup" class="view">
+<div class="section glass backupBox">
+<h2>📤 Export Backup</h2>
+<p class="small">Creates an Excel file with every debt, its status, and full payment history. Keep it somewhere safe — you can restore from it later on this or another device.</p>
+<button type="button" class="primary" onclick="exportBackupExcel()">Export Backup (.xlsx)</button>
+</div>
+<div class="section glass">
+<h2>📥 Restore Backup</h2>
+<p class="small">Restores debts from a backup file made by this app's Export button. Restored entries are added alongside your current data (nothing existing is deleted).</p>
+<label class="fileLbl" for="restoreFile">Choose Backup File…</label>
+<input type="file" id="restoreFile" accept=".xlsx,.xls" style="display:none" onchange="handleRestoreFile(event)">
+</div>
+</section>
+
+</div>
+<button type="button" class="fab" onclick="openAddForm()">+</button>
+<script>
+function appAlert(msg){
+  return new Promise(resolve=>{
+    const ov=document.getElementById('modalOverlay'),btns=document.getElementById('modalBtns');
+    document.getElementById('modalMsg').textContent=msg;
+    btns.innerHTML='';
+    const ok=document.createElement('button');ok.textContent='OK';ok.className='mbPrimary';
+    ok.onclick=()=>{ov.style.display='none';resolve(true)};
+    btns.appendChild(ok);
+    ov.style.display='flex';
+    ok.focus();
+  });
+}
+function appConfirm(msg){
+  return new Promise(resolve=>{
+    const ov=document.getElementById('modalOverlay'),btns=document.getElementById('modalBtns');
+    document.getElementById('modalMsg').textContent=msg;
+    btns.innerHTML='';
+    const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.className='mbSecondary';
+    cancel.onclick=()=>{ov.style.display='none';resolve(false)};
+    const ok=document.createElement('button');ok.textContent='OK';ok.className='mbPrimary';
+    ok.onclick=()=>{ov.style.display='none';resolve(true)};
+    btns.appendChild(cancel);btns.appendChild(ok);
+    ov.style.display='flex';
+    ok.focus();
+  });
+}
+const KEY='shop_debts_v1';
+const today=()=>new Date().toISOString().slice(0,10);
+async function storageGet(key){
+  if(typeof window.storage!=='undefined' && window.storage){
+    try{ const r=await window.storage.get(key,false); return r?r.value:null }catch(e){ return null }
+  }
+  try{ return localStorage.getItem(key) }catch(e){ return null }
+}
+function storageSet(key,value){
+  if(typeof window.storage!=='undefined' && window.storage){
+    window.storage.set(key,value,false).catch(()=>{});
+    return;
+  }
+  try{ localStorage.setItem(key,value) }catch(e){}
+}
+const firebaseConfig={apiKey:"AIzaSyBDNC1IxI90kCIJ1MXYQxsGJtjFOTLVY2o",authDomain:"shop-calculation-app.firebaseapp.com",projectId:"shop-calculation-app",storageBucket:"shop-calculation-app.firebasestorage.app",messagingSenderId:"898165250770",appId:"1:898165250770:web:598dc9b7457bd8db432b0b"};
+let db=null,fbReady=false,applyingRemote=false,pendingRerender=false;
+document.addEventListener('focusout',e=>{
+  if(pendingRerender && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')){
+    pendingRerender=false;
+    setTimeout(()=>{ if(!document.activeElement||(document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')) renderAll(); },0);
+  }
+});
+function setSyncBadge(text,cls){const el=document.getElementById('syncBadge');if(el){el.textContent=text;el.className='syncBadge '+cls}}
+function waitForFirebase(){
+  return new Promise(resolve=>{
+    if(window.firebase) return resolve(true);
+    let tries=0;
+    const iv=setInterval(()=>{
+      if(window.firebase){clearInterval(iv);resolve(true)}
+      else if(++tries>50){clearInterval(iv);resolve(false)}
+    },100);
+  });
+}
+async function initFirebaseSync(){
+  const ok=await waitForFirebase();
+  if(!ok){setSyncBadge('📴 Local only','offline');return}
+  try{
+    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore();
+    try{ await db.enablePersistence({synchronizeTabs:true}); }catch(e){}
+    fbReady=true;
+    setSyncBadge(navigator.onLine?'☁️ Synced':'📴 Offline (will sync)','offline');
+    const isTyping=()=>{let a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')};
+    db.collection('shopDebts').doc('state').onSnapshot(snap=>{
+      if(snap.exists){
+        let incoming=snap.data();
+        if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
+          applyingRemote=true;state.debts=incoming.debts||[];
+          if(isTyping()) pendingRerender=true; else renderAll();
+          applyingRemote=false;
+        }
+      }
+      setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':'☁️ Synced',snap.metadata.fromCache?'offline':'online');
+    },()=>{setSyncBadge('⚠️ Sync error','offline')});
+    window.addEventListener('online',()=>setSyncBadge('☁️ Synced','online'));
+    window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
+  }catch(e){setSyncBadge('📴 Local only','offline')}
+}
+function cloudSave(){ if(fbReady && db && !applyingRemote){ db.collection('shopDebts').doc('state').set({debts:state.debts}).catch(()=>{}); } }
+let saveToastTimer=null;
+function flashSaved(){
+  const el=document.getElementById('saveToast');
+  if(!el)return;
+  el.classList.add('show');
+  clearTimeout(saveToastTimer);
+  saveToastTimer=setTimeout(()=>el.classList.remove('show'),1100);
+}
+function save(){storageSet(KEY,JSON.stringify(state));cloudSave();flashSaved()}
+function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); cloudSave(); }catch(e){} }
+
+let state={debts:[]};
+function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
+function migrate(){
+  state.debts.forEach(d=>{
+    if(!d.direction) d.direction=d.type==='payable'?'payable':'receivable';
+    if(d.extra==null) d.extra=Number(d.extra||0);
+    if(!('address' in d)) d.address='';
+  });
+}
+function totalDue(d){ return Number(d.amount||0)+Number(d.extra||0); }
+function paidSoFar(d){ return (d.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0); }
+function remaining(d){ return Math.max(0, totalDue(d)-paidSoFar(d)); }
+function isOverdue(d){ return d.dueDate && !isSettled(d) && remaining(d)>0.004 && d.dueDate<today(); }
+function isDueSoon(d){ if(!d.dueDate || isSettled(d) || remaining(d)<=0.004 || isOverdue(d)) return false; const diff=(new Date(d.dueDate)-new Date(today()))/86400000; return diff>=0 && diff<=7; }
+function daysOverdue(d){ if(!d.dueDate) return 0; const a=new Date(d.dueDate),b=new Date(today()); return Math.round((b-a)/86400000); }
+function isSettled(d){ return d.settled || remaining(d)<=0.004; }
+
+async function init(){
+  try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw); state.debts=parsed.debts||[]; migrate(); } }catch(e){}
+  document.getElementById('fDateGiven').value=today();
+  renderAll();
+  initFirebaseSync();
+  scheduleFlush();
+}
+function scheduleFlush(){
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') forceFlush(); });
+  window.addEventListener('blur',forceFlush);
+  window.addEventListener('pagehide',forceFlush);
+  window.addEventListener('beforeunload',forceFlush);
+}
+
+let lastListView=null;
+function show(view){
+  if(['recv','pay','settled','dashboard'].includes(view)) lastListView=view;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(view).classList.add('active');
+  document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('navActive',b.dataset.view===view));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderAll(){
+  renderDashboard();
+  renderList('recvList','receivable','recvSearch','recvChip');
+  renderList('payList','payable','paySearch','payChip');
+  renderSettled();
+}
+
+function renderDashboard(){
+  const active=state.debts.filter(d=>!isSettled(d));
+  const recvSum=active.filter(d=>d.direction==='receivable').reduce((s,d)=>s+remaining(d),0);
+  const paySum=active.filter(d=>d.direction==='payable').reduce((s,d)=>s+remaining(d),0);
+  document.getElementById('dashRecv').textContent=money(recvSum)+' AFN';
+  document.getElementById('dashPay').textContent=money(paySum)+' AFN';
+  const net=recvSum-paySum;
+  const netEl=document.getElementById('dashNet');
+  netEl.textContent=(net<0?'-':'')+money(Math.abs(net))+' AFN';
+  netEl.style.color=net<0?'var(--red)':'var(--green)';
+  const overdue=active.filter(isOverdue);
+  const dueSoon=active.filter(isDueSoon);
+  document.getElementById('dashOverdue').textContent=overdue.length;
+  document.getElementById('dashDueSoon').textContent=dueSoon.length;
+  document.getElementById('dashActive').textContent=active.length;
+  document.getElementById('overdueList').innerHTML=overdue.length
+    ? overdue.sort((a,b)=>daysOverdue(b)-daysOverdue(a)).map(d=>debtCardHtml(d)).join('')
+    : '<div class="empty">No overdue debts. 🎉</div>';
+  document.getElementById('dueSoonList').innerHTML=dueSoon.length
+    ? dueSoon.sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).map(d=>debtCardHtml(d)).join('')
+    : '<div class="empty">Nothing due in the next 7 days.</div>';
+  const recent=[...state.debts].sort((a,b)=>(b.dateGiven||'').localeCompare(a.dateGiven||'')).slice(0,5);
+  document.getElementById('recentList').innerHTML=recent.length
+    ? recent.map(d=>debtCardHtml(d)).join('')
+    : '<div class="empty">No debts recorded yet.</div>';
+}
+
+function setChip(chipBoxId,el,listId,dir,searchId){
+  document.querySelectorAll('#'+chipBoxId+' .chip').forEach(c=>c.classList.remove('chipActive'));
+  el.classList.add('chipActive');
+  renderList(listId,dir,searchId,chipBoxId);
+}
+function renderList(elId,dir,searchId,chipBoxId){
+  const chipBox=document.getElementById(chipBoxId);
+  const term=chipBox?(chipBox.querySelector('.chipActive')?.dataset.t||'all'):'all';
+  const q=(document.getElementById(searchId)?.value||'').trim().toLowerCase();
+  let list=state.debts.filter(d=>d.direction===dir && !isSettled(d));
+  if(term!=='all') list=list.filter(d=>d.category===term);
+  if(q) list=list.filter(d=>(d.name||'').toLowerCase().includes(q) || (d.phone||'').toLowerCase().includes(q));
+  list=list.sort((a,b)=>{
+    const ao=isOverdue(a)?0:1, bo=isOverdue(b)?0:1;
+    if(ao!==bo) return ao-bo;
+    return (b.dateGiven||'').localeCompare(a.dateGiven||'');
+  });
+  document.getElementById(elId).innerHTML=list.length
+    ? list.map(d=>debtCardHtml(d)).join('')
+    : `<div class="empty">No matching debts here.</div>`;
+}
+
+function renderSettled(){
+  const list=state.debts.filter(isSettled).sort((a,b)=>(b.settledAt||'').localeCompare(a.settledAt||''));
+  document.getElementById('settledList').innerHTML=list.length
+    ? list.map(d=>debtCardHtml(d,true)).join('')
+    : '<div class="empty">No settled debts yet.</div>';
+}
+
+function debtCardHtml(d,settledView){
+  const rem=remaining(d), paid=paidSoFar(d), overdue=isOverdue(d), dueSoon=isDueSoon(d);
+  const dirBadge=d.direction==='payable'?'<span class="badge pay">You Owe</span>':'<span class="badge recv">Owed to You</span>';
+  const termBadge=d.category==='short'?'<span class="badge short">Short Term</span>':'<span class="badge long">Long Term</span>';
+  const overdueBadge=overdue?`<span class="badge overdue">Overdue ${daysOverdue(d)}d</span>`:'';
+  const dueSoonBadge=(!overdue && dueSoon)?`<span class="badge duesoon">Due Soon</span>`:'';
+  const settledBadge=isSettled(d)?'<span class="badge settled">Settled</span>':'';
+  const notes=d.notes?`<div class="debtNotes">📝 ${escapeHtml(d.notes)}</div>`:'';
+  const phone=d.phone?`<div class="debtPhone">${escapeHtml(d.phone)}</div>`:'';
+  const remClass=d.direction==='payable'?'pay':'recv';
+  let actions;
+  if(settledView){
+    actions=`<div class="debtActions">
+      <button type="button" class="secondaryBtn" onclick="openStatement('${d.id}')">📄 Statement</button>
+      <button type="button" class="secondaryBtn" onclick="reopenDebt('${d.id}')">↩ Reopen</button>
+      <button type="button" class="dangerBtn" onclick="deleteDebt('${d.id}')">Delete</button>
+    </div>`;
+  } else {
+    actions=`<div class="debtActions">
+      <button type="button" class="secondaryBtn" onclick="openPayModal('${d.id}')">💵 Record Payment</button>
+      <button type="button" class="secondaryBtn" onclick="openStatement('${d.id}')">📄 Statement</button>
+      <button type="button" class="secondaryBtn" onclick="openEditForm('${d.id}')">✏️ Edit</button>
+      <button type="button" class="settleBtn" onclick="markSettled('${d.id}')">✅ Mark Settled</button>
+      <button type="button" class="dangerBtn" onclick="deleteDebt('${d.id}')">Delete</button>
+    </div>`;
+  }
+  return `<div class="debtCard glass">
+    <div class="debtTop">
+      <div><div class="debtName" onclick="openStatement('${d.id}')">${escapeHtml(d.name)}</div>${phone}</div>
+      <div class="debtAmt"><div class="rem ${remClass}">${money(rem)} AFN</div><div class="of">of ${money(totalDue(d))} AFN${paid>0?' &middot; paid '+money(paid):''}</div></div>
+    </div>
+    <div class="debtMeta">
+      ${dirBadge} ${termBadge} ${overdueBadge} ${dueSoonBadge} ${settledBadge}
+      <span>Given: ${d.dateGiven||'—'}</span>
+      ${d.dueDate?`<span>Due: ${d.dueDate}</span>`:''}
+    </div>
+    ${notes}
+    ${actions}
+  </div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+let editingId=null;
+function openAddForm(){
+  editingId=null;
+  document.getElementById('formTitle').textContent='➕ Add Debt';
+  document.getElementById('fName').value='';
+  document.getElementById('fPhone').value='';
+  document.getElementById('fAddress').value='';
+  document.getElementById('fAmount').value='';
+  document.getElementById('fExtra').value='';
+  document.getElementById('fDateGiven').value=today();
+  document.getElementById('fDueDate').value='';
+  document.getElementById('fNotes').value='';
+  document.querySelector('input[name=fDir][value=receivable]').checked=true;
+  document.querySelector('input[name=fTerm][value=short]').checked=true;
+  show('addForm');
+}
+function openEditForm(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  editingId=id;
+  document.getElementById('formTitle').textContent='✏️ Edit Debt';
+  document.getElementById('fName').value=d.name||'';
+  document.getElementById('fPhone').value=d.phone||'';
+  document.getElementById('fAddress').value=d.address||'';
+  document.getElementById('fAmount').value=d.amount||'';
+  document.getElementById('fExtra').value=d.extra||'';
+  document.getElementById('fDateGiven').value=d.dateGiven||today();
+  document.getElementById('fDueDate').value=d.dueDate||'';
+  document.getElementById('fNotes').value=d.notes||'';
+  document.querySelector(`input[name=fDir][value=${d.direction==='payable'?'payable':'receivable'}]`).checked=true;
+  document.querySelector(`input[name=fTerm][value=${d.category==='long'?'long':'short'}]`).checked=true;
+  show('addForm');
+}
+function cancelForm(){ show(editingId?(lastListView||'dashboard'):'dashboard'); editingId=null; }
+async function saveDebtForm(){
+  const name=document.getElementById('fName').value.trim();
+  const amount=Number(document.getElementById('fAmount').value);
+  if(!name){ await appAlert('Please enter a name.'); return; }
+  if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
+  const phone=document.getElementById('fPhone').value.trim();
+  const address=document.getElementById('fAddress').value.trim();
+  const extra=Number(document.getElementById('fExtra').value)||0;
+  const dateGiven=document.getElementById('fDateGiven').value||today();
+  const dueDate=document.getElementById('fDueDate').value||null;
+  const notes=document.getElementById('fNotes').value.trim();
+  const direction=document.querySelector('input[name=fDir]:checked').value;
+  const category=document.querySelector('input[name=fTerm]:checked').value;
+  if(editingId){
+    const d=state.debts.find(x=>x.id===editingId);
+    if(d){
+      const paid=paidSoFar(d);
+      if((amount+extra)<paid){ const ok=await appConfirm(`Already paid ${money(paid)} AFN, more than the new total (${money(amount+extra)} AFN). Continue anyway?`); if(!ok) return; }
+      Object.assign(d,{name,phone,address,amount,extra,dateGiven,dueDate,notes,direction,category});
+      if(remaining(d)<=0.004) { d.settled=true; d.settledAt=d.settledAt||new Date().toISOString(); }
+    }
+  } else {
+    state.debts.push({id:uid(),name,phone,address,amount,extra,dateGiven,dueDate,notes,direction,category,payments:[],settled:false,settledAt:null});
+  }
+  save();renderAll();
+  const wasEditing=!!editingId; editingId=null;
+  show(wasEditing?(direction==='payable'?'pay':'recv'):'dashboard');
+}
+
+async function deleteDebt(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  const ok=await appConfirm(`Delete this debt record for ${d.name}?\n\nRemaining: ${money(remaining(d))} AFN\n\nThis cannot be undone.`);
+  if(!ok) return;
+  state.debts=state.debts.filter(x=>x.id!==id);
+  save();renderAll();
+  show(lastListView||'dashboard');
+}
+async function markSettled(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  const ok=await appConfirm(`Mark ${d.name}'s debt as fully settled?\n\nRemaining shown: ${money(remaining(d))} AFN`);
+  if(!ok) return;
+  d.settled=true; d.settledAt=new Date().toISOString();
+  save();renderAll();
+}
+function reopenDebt(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  d.settled=false; d.settledAt=null;
+  save();renderAll();
+}
+
+let payTargetId=null;
+function openPayModal(id){
+  payTargetId=id;
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  document.getElementById('payTitle').textContent=`Record Payment — ${d.name} (${money(remaining(d))} AFN left)`;
+  document.getElementById('payAmount').value='';
+  document.getElementById('payDate').value=today();
+  document.getElementById('payOverlay').style.display='flex';
+}
+function closePayModal(){ document.getElementById('payOverlay').style.display='none'; payTargetId=null; }
+async function confirmPayment(){
+  const d=state.debts.find(x=>x.id===payTargetId); if(!d) return;
+  let amt=Number(document.getElementById('payAmount').value);
+  const date=document.getElementById('payDate').value||today();
+  if(!amt || amt<=0){ await appAlert('Please enter a valid payment amount.'); return; }
+  const rem=remaining(d);
+  if(amt>rem+0.004){ amt=rem; await appAlert(`That's more than what's owed — recording ${money(rem)} AFN to fully settle this debt.`); }
+  d.payments=d.payments||[];
+  d.payments.push({date,amount:amt});
+  if(remaining(d)<=0.004){ d.settled=true; d.settledAt=new Date().toISOString(); }
+  closePayModal();
+  save();renderAll();
+  if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
+}
+
+let statementId=null;
+function openStatement(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  statementId=id;
+  document.getElementById('stTitle').textContent='📄 '+d.name;
+  const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const payHtml=pays.length
+    ? pays.map(p=>`<div class="payHistItem"><span>${p.date}</span><span>${money(p.amount)} AFN</span></div>`).join('')
+    : '<div class="small">No payments recorded yet.</div>';
+  document.getElementById('stBody').innerHTML=`
+    <div class="statRow"><span>Direction</span><b>${d.direction==='payable'?'🔴 You Owe Them':'🟢 They Owe You'}</b></div>
+    <div class="statRow"><span>Term</span><b>${d.category==='long'?'Long Term':'Short Term'}</b></div>
+    ${d.phone?`<div class="statRow"><span>Phone</span><b>${escapeHtml(d.phone)}</b></div>`:''}
+    ${d.address?`<div class="statRow"><span>Address</span><b>${escapeHtml(d.address)}</b></div>`:''}
+    <div class="statRow"><span>Amount</span><b>${money(d.amount)} AFN</b></div>
+    ${d.extra?`<div class="statRow"><span>Extra Charge / Interest</span><b>${money(d.extra)} AFN</b></div>`:''}
+    <div class="statRow"><span>Total Due</span><b>${money(totalDue(d))} AFN</b></div>
+    <div class="statRow"><span>Paid So Far</span><b>${money(paidSoFar(d))} AFN</b></div>
+    <div class="statRow"><span>Remaining</span><b>${money(remaining(d))} AFN</b></div>
+    <div class="statRow"><span>Date Given</span><b>${d.dateGiven||'—'}</b></div>
+    ${d.dueDate?`<div class="statRow"><span>Due Date</span><b>${d.dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
+    <div class="statRow"><span>Status</span><b>${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}</b></div>
+    ${d.notes?`<div class="statRow"><span>Notes</span><b>${escapeHtml(d.notes)}</b></div>`:''}
+    <h2 style="margin-top:16px;font-size:13.5px">Payment History</h2>
+    ${payHtml}
+    <div class="debtActions" style="margin-top:14px">
+      <button type="button" class="secondaryBtn" onclick="openPayModal('${d.id}')">💵 Record Payment</button>
+      <button type="button" class="secondaryBtn" onclick="openEditForm('${d.id}')">✏️ Edit</button>
+      ${isSettled(d)?`<button type="button" class="secondaryBtn" onclick="reopenDebt('${d.id}');openStatement('${d.id}')">↩ Reopen</button>`:`<button type="button" class="settleBtn" onclick="markSettled('${d.id}');openStatement('${d.id}')">✅ Mark Settled</button>`}
+    </div>
+  `;
+  show('statement');
+}
+async function copyStatement(){
+  const d=state.debts.find(x=>x.id===statementId); if(!d) return;
+  const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let txt=`Shop Debts — Statement\n`;
+  txt+=`Name: ${d.name}\n`;
+  if(d.phone) txt+=`Phone: ${d.phone}\n`;
+  if(d.address) txt+=`Address: ${d.address}\n`;
+  txt+=`Direction: ${d.direction==='payable'?'You owe them':'They owe you'}\n`;
+  txt+=`Term: ${d.category==='long'?'Long Term':'Short Term'}\n`;
+  txt+=`Amount: ${money(d.amount)} AFN\n`;
+  if(d.extra) txt+=`Extra Charge/Interest: ${money(d.extra)} AFN\n`;
+  txt+=`Total Due: ${money(totalDue(d))} AFN\n`;
+  txt+=`Paid: ${money(paidSoFar(d))} AFN\n`;
+  txt+=`Remaining: ${money(remaining(d))} AFN\n`;
+  txt+=`Date Given: ${d.dateGiven||'—'}\n`;
+  if(d.dueDate) txt+=`Due Date: ${d.dueDate}\n`;
+  txt+=`Status: ${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}\n`;
+  if(pays.length){ txt+=`\nPayments:\n`; pays.forEach(p=>{ txt+=`  ${p.date}: ${money(p.amount)} AFN\n`; }); }
+  if(d.notes) txt+=`\nNotes: ${d.notes}\n`;
+  try{
+    await navigator.clipboard.writeText(txt);
+    appAlert('Statement copied — you can paste it into WhatsApp, SMS, or anywhere else.');
+  }catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    try{ document.execCommand('copy'); appAlert('Statement copied — you can paste it into WhatsApp, SMS, or anywhere else.'); }
+    catch(e2){ appAlert('Could not copy automatically. Statement:\n\n'+txt); }
+    document.body.removeChild(ta);
+  }
+}
+
+async function loadXLSX(){
+  if(window.XLSX) return;
+  await new Promise(res=>{
+    const iv=setInterval(()=>{ if(window.XLSX){clearInterval(iv);res()} },100);
+    setTimeout(()=>{clearInterval(iv);res()},5000);
+  });
+}
+async function exportBackupExcel(){
+  try{
+    await loadXLSX();
+    if(!window.XLSX){ await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
+    const wb=XLSX.utils.book_new();
+    const debtRows=state.debts.map(d=>({
+      ID:d.id,Name:d.name,Phone:d.phone||'',Address:d.address||'',
+      Direction:d.direction==='payable'?'Payable (You Owe)':'Receivable (Owed to You)',
+      Category:d.category==='short'?'Short Term':'Long Term',
+      'Original Amount':d.amount,'Extra Charge':d.extra||0,'Paid So Far':paidSoFar(d),'Remaining':remaining(d),
+      Status:isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active'),
+      'Date Given':d.dateGiven||'','Due Date':d.dueDate||'','Notes':d.notes||''
+    }));
+    const ws=XLSX.utils.json_to_sheet(debtRows);
+    XLSX.utils.book_append_sheet(wb,ws,'Debts');
+    const payRows=[];
+    state.debts.forEach(d=>{ (d.payments||[]).forEach(p=>{ payRows.push({ID:d.id,Name:d.name,'Payment Date':p.date,'Payment Amount':p.amount}); }); });
+    const ws2=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':''}]);
+    XLSX.utils.book_append_sheet(wb,ws2,'Payments');
+    XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
+  }catch(err){ appAlert('Could not create the backup file: '+err.message); }
+}
+async function handleRestoreFile(e){
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    await loadXLSX();
+    const data=await f.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array',cellDates:true});
+    if(!wb.SheetNames.includes('Debts')){ await appAlert('This file doesn\'t look like a Shop Debts backup (no "Debts" sheet found).'); e.target.value=''; return; }
+    const debtRows=XLSX.utils.sheet_to_json(wb.Sheets['Debts'],{defval:''});
+    const payRows=wb.SheetNames.includes('Payments')?XLSX.utils.sheet_to_json(wb.Sheets['Payments'],{defval:''}):[];
+    if(!debtRows.length){ await appAlert('No debts found in that file.'); e.target.value=''; return; }
+    const ok=await appConfirm(`Found ${debtRows.length} debt(s) in this backup. They will be added to your current data (existing debts are not removed or changed). Continue?`);
+    if(!ok){ e.target.value=''; return; }
+    const idMap={};
+    debtRows.forEach(r=>{
+      const newId=uid();
+      if(r.ID) idMap[String(r.ID)]=newId;
+      const dirTxt=String(r.Direction||'').toLowerCase();
+      const catTxt=String(r.Category||'').toLowerCase();
+      state.debts.push({
+        id:newId,
+        name:String(r.Name||'').trim()||'Unnamed',
+        phone:String(r.Phone||''),
+        address:String(r.Address||''),
+        direction:dirTxt.includes('payable')?'payable':'receivable',
+        category:catTxt.includes('long')?'long':'short',
+        amount:Number(r['Original Amount'])||0,
+        extra:Number(r['Extra Charge'])||0,
+        dateGiven:r['Date Given']?String(r['Date Given']):today(),
+        dueDate:r['Due Date']?String(r['Due Date']):null,
+        notes:String(r.Notes||''),
+        payments:[],
+        settled:String(r.Status||'').toLowerCase()==='settled',
+        settledAt:String(r.Status||'').toLowerCase()==='settled'?new Date().toISOString():null
+      });
+    });
+    payRows.forEach(p=>{
+      const newId=idMap[String(p.ID)];
+      if(!newId) return;
+      const d=state.debts.find(x=>x.id===newId);
+      if(d && p['Payment Date']!=='' && p['Payment Amount']!==''){
+        d.payments=d.payments||[];
+        d.payments.push({date:String(p['Payment Date']),amount:Number(p['Payment Amount'])||0});
+      }
+    });
+    save();renderAll();
+    await appAlert(`Restored ${debtRows.length} debt(s) successfully.`);
+  }catch(err){ appAlert('Could not restore this file: '+err.message); }
+  e.target.value='';
+}
+
+if(document.readyState==='complete'){ init(); } else { window.addEventListener('load',init); }
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body></html>
