@@ -416,7 +416,7 @@ async function initFirebaseSync(){
       if(snap.exists){
         let incoming=snap.data();
         if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
-          applyingRemote=true;state.debts=incoming.debts||[];
+          applyingRemote=true;state.debts=incoming.debts||[];migrate();
           if(isTyping()) pendingRerender=true; else renderAll();
           applyingRemote=false;
         }
@@ -434,7 +434,7 @@ async function refreshFromCloud(){
     if(snap.exists){
       const incoming=snap.data();
       if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
-        applyingRemote=true;state.debts=incoming.debts||[];
+        applyingRemote=true;state.debts=incoming.debts||[];migrate();
         storageSet(KEY,JSON.stringify(state));
         renderAll();
         applyingRemote=false;
