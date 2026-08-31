@@ -356,6 +356,7 @@ document.addEventListener('focusout',e=>{
 function setSyncBadge(text,cls){const el=document.getElementById('syncBadge');if(el){el.textContent=text;el.className='syncBadge '+cls}}
 function waitForFirebase(){
   return new Promise(resolve=>{
+    if(!navigator.onLine) return resolve(false);
     if(window.firebase) return resolve(true);
     let tries=0;
     const iv=setInterval(()=>{
@@ -364,9 +365,20 @@ function waitForFirebase(){
     },100);
   });
 }
+let firebaseInitAttempted=false;
 async function initFirebaseSync(){
   const ok=await waitForFirebase();
-  if(!ok){setSyncBadge('📴 Local only','offline');return}
+  if(!ok){
+    setSyncBadge('📴 Local only','offline');
+    if(!firebaseInitAttempted){
+      window.addEventListener('online',function retrySync(){
+        window.removeEventListener('online',retrySync);
+        initFirebaseSync();
+      },{once:true});
+    }
+    return;
+  }
+  firebaseInitAttempted=true;
   try{
     if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db=firebase.firestore();
