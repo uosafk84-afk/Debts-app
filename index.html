@@ -188,6 +188,27 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 </div>
+<div id="itemOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:360px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="itemTitle">Add Debt</div>
+    <div style="text-align:left">
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Description *</label>
+      <textarea id="itemDesc" placeholder="e.g. Old debt from before Ramadan" style="margin-bottom:10px"></textarea>
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN) *</label><input type="number" id="itemAmount" step="0.01" min="0"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Extra Charge (opt.)</label><input type="number" id="itemExtra" step="0.01" min="0"></div>
+      </div>
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date Given</label><input type="date" id="itemDateGiven"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Due Date (opt.)</label><input type="date" id="itemDueDate"></div>
+      </div>
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeItemModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmItem()">Save</button>
+    </div>
+  </div>
+</div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
@@ -268,17 +289,22 @@ textarea{resize:vertical;min-height:56px}
 <div class="full"><label>Name *</label><input type="text" id="fName" placeholder="e.g. Rahim Khan"></div>
 <div><label>Phone (optional)</label><input type="tel" id="fPhone" placeholder="07xxxxxxxx"></div>
 <div><label>Address (optional)</label><input type="text" id="fAddress" placeholder="Shop / area / village"></div>
-<div><label>Amount (AFN) *</label><input type="number" id="fAmount" step="0.01" min="0" placeholder="0"></div>
-<div><label>Extra Charge / Interest (optional)</label><input type="number" id="fExtra" step="0.01" min="0" placeholder="0"></div>
-<div><label>Date Given</label><input type="date" id="fDateGiven"></div>
-<div><label>Due Date (optional)</label><input type="date" id="fDueDate"></div>
 <div class="full"><label>Term</label>
   <div class="choice2">
     <label class="tShort"><input type="radio" name="fTerm" value="short" checked><span>⏱️ Short Term</span></label>
     <label class="tLong"><input type="radio" name="fTerm" value="long"><span>📅 Long Term</span></label>
   </div>
 </div>
-<div class="full"><label>Notes (optional)</label><textarea id="fNotes" placeholder="What was bought/sold, agreement details, etc."></textarea></div>
+</div>
+<div class="full" id="fFirstItemWrap" style="margin-top:14px">
+<div class="small" style="margin-bottom:8px;font-weight:700">First Debt</div>
+<div class="formGrid">
+<div class="full"><label>Description *</label><input type="text" id="fDesc" placeholder="e.g. Old debt from before Ramadan, or Soap + shampoo on credit"></div>
+<div><label>Amount (AFN) *</label><input type="number" id="fAmount" step="0.01" min="0" placeholder="0"></div>
+<div><label>Extra Charge / Interest (optional)</label><input type="number" id="fExtra" step="0.01" min="0" placeholder="0"></div>
+<div><label>Date Given</label><input type="date" id="fDateGiven"></div>
+<div><label>Due Date (optional)</label><input type="date" id="fDueDate"></div>
+</div>
 </div>
 <div class="formActions">
 <button type="button" class="secondaryBtn" style="flex:1;padding:11px" onclick="cancelForm()">Cancel</button>
@@ -435,17 +461,37 @@ function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractio
 function migrate(){
   state.debts.forEach(d=>{
     if(!d.direction) d.direction=d.type==='payable'?'payable':'receivable';
-    if(d.extra==null) d.extra=Number(d.extra||0);
     if(!('address' in d)) d.address='';
+    if(!Array.isArray(d.items)){
+      // legacy record: had a single amount/extra/dateGiven/dueDate/notes at top level — turn it into one item
+      const hadAmount=('amount' in d);
+      if(hadAmount){
+        d.items=[{
+          id:uid(),
+          description:d.notes||'Debt',
+          amount:Number(d.amount||0),
+          extra:Number(d.extra||0),
+          dateGiven:d.dateGiven||today(),
+          dueDate:d.dueDate||null
+        }];
+      } else {
+        d.items=[];
+      }
+      delete d.amount; delete d.extra; delete d.dateGiven; delete d.dueDate; delete d.notes;
+    }
   });
 }
-function totalDue(d){ return Number(d.amount||0)+Number(d.extra||0); }
+function itemsOf(d){ return d.items||[]; }
+function totalDue(d){ return itemsOf(d).reduce((s,it)=>s+Number(it.amount||0)+Number(it.extra||0),0); }
 function paidSoFar(d){ return (d.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0); }
 function remaining(d){ return Math.max(0, totalDue(d)-paidSoFar(d)); }
-function isOverdue(d){ return d.dueDate && !isSettled(d) && remaining(d)>0.004 && d.dueDate<today(); }
-function isDueSoon(d){ if(!d.dueDate || isSettled(d) || remaining(d)<=0.004 || isOverdue(d)) return false; const diff=(new Date(d.dueDate)-new Date(today()))/86400000; return diff>=0 && diff<=7; }
-function daysOverdue(d){ if(!d.dueDate) return 0; const a=new Date(d.dueDate),b=new Date(today()); return Math.round((b-a)/86400000); }
+function nextDueDate(d){ const dates=itemsOf(d).map(it=>it.dueDate).filter(Boolean).sort(); return dates.length?dates[0]:null; }
+function latestDateGiven(d){ const dates=itemsOf(d).map(it=>it.dateGiven).filter(Boolean).sort(); return dates.length?dates[dates.length-1]:null; }
+function isOverdue(d){ const dd=nextDueDate(d); return dd && !isSettled(d) && remaining(d)>0.004 && dd<today(); }
+function isDueSoon(d){ const dd=nextDueDate(d); if(!dd || isSettled(d) || remaining(d)<=0.004 || isOverdue(d)) return false; const diff=(new Date(dd)-new Date(today()))/86400000; return diff>=0 && diff<=7; }
+function daysOverdue(d){ const dd=nextDueDate(d); if(!dd) return 0; const a=new Date(dd),b=new Date(today()); return Math.round((b-a)/86400000); }
 function isSettled(d){ return d.settled || remaining(d)<=0.004; }
+function recalcSettled(d){ if(remaining(d)<=0.004){ d.settled=true; d.settledAt=d.settledAt||new Date().toISOString(); } else { d.settled=false; d.settledAt=null; } }
 
 async function init(){
   try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw); state.debts=parsed.debts||[]; migrate(); } }catch(e){}
@@ -499,9 +545,9 @@ function renderDashboard(){
     ? overdue.sort((a,b)=>daysOverdue(b)-daysOverdue(a)).map(d=>debtCardHtml(d)).join('')
     : '<div class="empty">No overdue debts. 🎉</div>';
   document.getElementById('dueSoonList').innerHTML=dueSoon.length
-    ? dueSoon.sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).map(d=>debtCardHtml(d)).join('')
+    ? dueSoon.sort((a,b)=>(nextDueDate(a)||'').localeCompare(nextDueDate(b)||'')).map(d=>debtCardHtml(d)).join('')
     : '<div class="empty">Nothing due in the next 7 days.</div>';
-  const recent=[...state.debts].sort((a,b)=>(b.dateGiven||'').localeCompare(a.dateGiven||'')).slice(0,5);
+  const recent=[...state.debts].sort((a,b)=>(latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'')).slice(0,5);
   document.getElementById('recentList').innerHTML=recent.length
     ? recent.map(d=>debtCardHtml(d)).join('')
     : '<div class="empty">No debts recorded yet.</div>';
@@ -522,7 +568,7 @@ function renderList(elId,dir,searchId,chipBoxId){
   list=list.sort((a,b)=>{
     const ao=isOverdue(a)?0:1, bo=isOverdue(b)?0:1;
     if(ao!==bo) return ao-bo;
-    return (b.dateGiven||'').localeCompare(a.dateGiven||'');
+    return (latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'');
   });
   document.getElementById(elId).innerHTML=list.length
     ? list.map(d=>debtCardHtml(d)).join('')
@@ -543,9 +589,11 @@ function debtCardHtml(d,settledView){
   const overdueBadge=overdue?`<span class="badge overdue">Overdue ${daysOverdue(d)}d</span>`:'';
   const dueSoonBadge=(!overdue && dueSoon)?`<span class="badge duesoon">Due Soon</span>`:'';
   const settledBadge=isSettled(d)?'<span class="badge settled">Settled</span>':'';
-  const notes=d.notes?`<div class="debtNotes">📝 ${escapeHtml(d.notes)}</div>`:'';
+  const items=itemsOf(d);
+  const descList=items.length?`<div class="debtNotes">📝 ${items.map(it=>escapeHtml(it.description||'Debt')).join(' • ')}</div>`:'';
   const phone=d.phone?`<div class="debtPhone">${escapeHtml(d.phone)}</div>`:'';
   const remClass=d.direction==='payable'?'pay':'recv';
+  const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
   let actions;
   if(settledView){
     actions=`<div class="debtActions">
@@ -569,10 +617,11 @@ function debtCardHtml(d,settledView){
     </div>
     <div class="debtMeta">
       ${dirBadge} ${termBadge} ${overdueBadge} ${dueSoonBadge} ${settledBadge}
-      <span>Given: ${d.dateGiven||'—'}</span>
-      ${d.dueDate?`<span>Due: ${d.dueDate}</span>`:''}
+      <span>${items.length} debt${items.length===1?'':'s'}</span>
+      <span>Given: ${dateGiven||'—'}</span>
+      ${dueDate?`<span>Due: ${dueDate}</span>`:''}
     </div>
-    ${notes}
+    ${descList}
     ${actions}
   </div>`;
 }
@@ -581,15 +630,16 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 let editingId=null;
 function openAddForm(){
   editingId=null;
-  document.getElementById('formTitle').textContent='➕ Add Debt';
+  document.getElementById('formTitle').textContent='➕ Add Person / Debt';
+  document.getElementById('fFirstItemWrap').style.display='';
   document.getElementById('fName').value='';
   document.getElementById('fPhone').value='';
   document.getElementById('fAddress').value='';
+  document.getElementById('fDesc').value='';
   document.getElementById('fAmount').value='';
   document.getElementById('fExtra').value='';
   document.getElementById('fDateGiven').value=today();
   document.getElementById('fDueDate').value='';
-  document.getElementById('fNotes').value='';
   document.querySelector('input[name=fDir][value=receivable]').checked=true;
   document.querySelector('input[name=fTerm][value=short]').checked=true;
   show('addForm');
@@ -597,15 +647,11 @@ function openAddForm(){
 function openEditForm(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   editingId=id;
-  document.getElementById('formTitle').textContent='✏️ Edit Debt';
+  document.getElementById('formTitle').textContent='✏️ Edit Person';
+  document.getElementById('fFirstItemWrap').style.display='none';
   document.getElementById('fName').value=d.name||'';
   document.getElementById('fPhone').value=d.phone||'';
   document.getElementById('fAddress').value=d.address||'';
-  document.getElementById('fAmount').value=d.amount||'';
-  document.getElementById('fExtra').value=d.extra||'';
-  document.getElementById('fDateGiven').value=d.dateGiven||today();
-  document.getElementById('fDueDate').value=d.dueDate||'';
-  document.getElementById('fNotes').value=d.notes||'';
   document.querySelector(`input[name=fDir][value=${d.direction==='payable'?'payable':'receivable'}]`).checked=true;
   document.querySelector(`input[name=fTerm][value=${d.category==='long'?'long':'short'}]`).checked=true;
   show('addForm');
@@ -613,31 +659,85 @@ function openEditForm(id){
 function cancelForm(){ show(editingId?(lastListView||'dashboard'):'dashboard'); editingId=null; }
 async function saveDebtForm(){
   const name=document.getElementById('fName').value.trim();
-  const amount=Number(document.getElementById('fAmount').value);
   if(!name){ await appAlert('Please enter a name.'); return; }
-  if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
   const phone=document.getElementById('fPhone').value.trim();
   const address=document.getElementById('fAddress').value.trim();
-  const extra=Number(document.getElementById('fExtra').value)||0;
-  const dateGiven=document.getElementById('fDateGiven').value||today();
-  const dueDate=document.getElementById('fDueDate').value||null;
-  const notes=document.getElementById('fNotes').value.trim();
   const direction=document.querySelector('input[name=fDir]:checked').value;
   const category=document.querySelector('input[name=fTerm]:checked').value;
   if(editingId){
     const d=state.debts.find(x=>x.id===editingId);
-    if(d){
-      const paid=paidSoFar(d);
-      if((amount+extra)<paid){ const ok=await appConfirm(`Already paid ${money(paid)} AFN, more than the new total (${money(amount+extra)} AFN). Continue anyway?`); if(!ok) return; }
-      Object.assign(d,{name,phone,address,amount,extra,dateGiven,dueDate,notes,direction,category});
-      if(remaining(d)<=0.004) { d.settled=true; d.settledAt=d.settledAt||new Date().toISOString(); }
-    }
+    if(d){ Object.assign(d,{name,phone,address,direction,category}); }
   } else {
-    state.debts.push({id:uid(),name,phone,address,amount,extra,dateGiven,dueDate,notes,direction,category,payments:[],settled:false,settledAt:null});
+    const description=document.getElementById('fDesc').value.trim();
+    const amount=Number(document.getElementById('fAmount').value);
+    if(!description){ await appAlert('Please enter a description for this debt.'); return; }
+    if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
+    const extra=Number(document.getElementById('fExtra').value)||0;
+    const dateGiven=document.getElementById('fDateGiven').value||today();
+    const dueDate=document.getElementById('fDueDate').value||null;
+    state.debts.push({id:uid(),name,phone,address,direction,category,
+      items:[{id:uid(),description,amount,extra,dateGiven,dueDate}],
+      payments:[],settled:false,settledAt:null});
   }
   save();renderAll();
   const wasEditing=!!editingId; editingId=null;
   show(wasEditing?(direction==='payable'?'pay':'recv'):'dashboard');
+}
+
+let itemPersonId=null, itemEditId=null;
+function openAddItemModal(personId){
+  itemPersonId=personId; itemEditId=null;
+  document.getElementById('itemTitle').textContent='➕ Add Debt';
+  document.getElementById('itemDesc').value='';
+  document.getElementById('itemAmount').value='';
+  document.getElementById('itemExtra').value='';
+  document.getElementById('itemDateGiven').value=today();
+  document.getElementById('itemDueDate').value='';
+  document.getElementById('itemOverlay').style.display='flex';
+}
+function openEditItemModal(personId,itemId){
+  const d=state.debts.find(x=>x.id===personId); if(!d) return;
+  const it=itemsOf(d).find(x=>x.id===itemId); if(!it) return;
+  itemPersonId=personId; itemEditId=itemId;
+  document.getElementById('itemTitle').textContent='✏️ Edit Debt';
+  document.getElementById('itemDesc').value=it.description||'';
+  document.getElementById('itemAmount').value=it.amount||'';
+  document.getElementById('itemExtra').value=it.extra||'';
+  document.getElementById('itemDateGiven').value=it.dateGiven||today();
+  document.getElementById('itemDueDate').value=it.dueDate||'';
+  document.getElementById('itemOverlay').style.display='flex';
+}
+function closeItemModal(){ document.getElementById('itemOverlay').style.display='none'; itemPersonId=null; itemEditId=null; }
+async function confirmItem(){
+  const d=state.debts.find(x=>x.id===itemPersonId); if(!d) return;
+  const description=document.getElementById('itemDesc').value.trim();
+  const amount=Number(document.getElementById('itemAmount').value);
+  if(!description){ await appAlert('Please enter a description for this debt.'); return; }
+  if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
+  const extra=Number(document.getElementById('itemExtra').value)||0;
+  const dateGiven=document.getElementById('itemDateGiven').value||today();
+  const dueDate=document.getElementById('itemDueDate').value||null;
+  d.items=d.items||[];
+  if(itemEditId){
+    const it=d.items.find(x=>x.id===itemEditId);
+    if(it) Object.assign(it,{description,amount,extra,dateGiven,dueDate});
+  } else {
+    d.items.push({id:uid(),description,amount,extra,dateGiven,dueDate});
+  }
+  recalcSettled(d);
+  closeItemModal();
+  save();renderAll();
+  if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
+}
+async function deleteItem(personId,itemId){
+  const d=state.debts.find(x=>x.id===personId); if(!d) return;
+  const it=itemsOf(d).find(x=>x.id===itemId); if(!it) return;
+  const ok=await appConfirm(`Remove this debt?\n\n"${it.description}" — ${money(Number(it.amount||0)+Number(it.extra||0))} AFN\n\nThis cannot be undone.`);
+  if(!ok) return;
+  d.items=itemsOf(d).filter(x=>x.id!==itemId);
+  recalcSettled(d);
+  save();renderAll();
+  if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
 }
 
 async function deleteDebt(id){
@@ -691,29 +791,44 @@ function openStatement(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   statementId=id;
   document.getElementById('stTitle').textContent='📄 '+d.name;
+  const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
+  const itemsHtml=items.length ? items.map(it=>`
+    <div class="debtCard glass" style="margin-bottom:8px;padding:12px 14px">
+      <div class="debtTop">
+        <div style="min-width:0"><div style="font-weight:700;font-size:13.5px">${escapeHtml(it.description||'Debt')}</div>
+          <div class="small">Given: ${it.dateGiven||'—'}${it.dueDate?' · Due: '+it.dueDate:''}</div>
+        </div>
+        <div class="debtAmt"><div class="rem" style="font-size:15px">${money(Number(it.amount||0)+Number(it.extra||0))} AFN</div>${it.extra?`<div class="of">incl. ${money(it.extra)} extra</div>`:''}</div>
+      </div>
+      <div class="debtActions" style="margin-top:8px">
+        <button type="button" class="secondaryBtn" onclick="openEditItemModal('${d.id}','${it.id}')">✏️ Edit</button>
+        <button type="button" class="dangerBtn" onclick="deleteItem('${d.id}','${it.id}')">🗑 Remove</button>
+      </div>
+    </div>`).join('') : '<div class="empty">No debts listed yet — add one below.</div>';
   const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const payHtml=pays.length
     ? pays.map(p=>`<div class="payHistItem"><span>${p.date}</span><span>${money(p.amount)} AFN</span></div>`).join('')
     : '<div class="small">No payments recorded yet.</div>';
+  const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
   document.getElementById('stBody').innerHTML=`
     <div class="statRow"><span>Direction</span><b>${d.direction==='payable'?'🔴 You Owe Them':'🟢 They Owe You'}</b></div>
     <div class="statRow"><span>Term</span><b>${d.category==='long'?'Long Term':'Short Term'}</b></div>
     ${d.phone?`<div class="statRow"><span>Phone</span><b>${escapeHtml(d.phone)}</b></div>`:''}
     ${d.address?`<div class="statRow"><span>Address</span><b>${escapeHtml(d.address)}</b></div>`:''}
-    <div class="statRow"><span>Amount</span><b>${money(d.amount)} AFN</b></div>
-    ${d.extra?`<div class="statRow"><span>Extra Charge / Interest</span><b>${money(d.extra)} AFN</b></div>`:''}
     <div class="statRow"><span>Total Due</span><b>${money(totalDue(d))} AFN</b></div>
     <div class="statRow"><span>Paid So Far</span><b>${money(paidSoFar(d))} AFN</b></div>
     <div class="statRow"><span>Remaining</span><b>${money(remaining(d))} AFN</b></div>
-    <div class="statRow"><span>Date Given</span><b>${d.dateGiven||'—'}</b></div>
-    ${d.dueDate?`<div class="statRow"><span>Due Date</span><b>${d.dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
+    <div class="statRow"><span>Date Given</span><b>${dateGiven||'—'}</b></div>
+    ${dueDate?`<div class="statRow"><span>Due Date</span><b>${dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
     <div class="statRow"><span>Status</span><b>${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}</b></div>
-    ${d.notes?`<div class="statRow"><span>Notes</span><b>${escapeHtml(d.notes)}</b></div>`:''}
+    <h2 style="margin-top:16px;font-size:13.5px">Debts (${items.length})</h2>
+    ${itemsHtml}
+    <button type="button" class="secondaryBtn" style="width:100%" onclick="openAddItemModal('${d.id}')">➕ Add Another Debt</button>
     <h2 style="margin-top:16px;font-size:13.5px">Payment History</h2>
     ${payHtml}
     <div class="debtActions" style="margin-top:14px">
       <button type="button" class="secondaryBtn" onclick="openPayModal('${d.id}')">💵 Record Payment</button>
-      <button type="button" class="secondaryBtn" onclick="openEditForm('${d.id}')">✏️ Edit</button>
+      <button type="button" class="secondaryBtn" onclick="openEditForm('${d.id}')">✏️ Edit Person</button>
       ${isSettled(d)?`<button type="button" class="secondaryBtn" onclick="reopenDebt('${d.id}');openStatement('${d.id}')">↩ Reopen</button>`:`<button type="button" class="settleBtn" onclick="markSettled('${d.id}');openStatement('${d.id}')">✅ Mark Settled</button>`}
     </div>
   `;
@@ -721,6 +836,7 @@ function openStatement(id){
 }
 async function copyStatement(){
   const d=state.debts.find(x=>x.id===statementId); if(!d) return;
+  const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
   const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   let txt=`Shop Debts — Statement\n`;
   txt+=`Name: ${d.name}\n`;
@@ -728,16 +844,12 @@ async function copyStatement(){
   if(d.address) txt+=`Address: ${d.address}\n`;
   txt+=`Direction: ${d.direction==='payable'?'You owe them':'They owe you'}\n`;
   txt+=`Term: ${d.category==='long'?'Long Term':'Short Term'}\n`;
-  txt+=`Amount: ${money(d.amount)} AFN\n`;
-  if(d.extra) txt+=`Extra Charge/Interest: ${money(d.extra)} AFN\n`;
-  txt+=`Total Due: ${money(totalDue(d))} AFN\n`;
+  if(items.length){ txt+=`\nDebts:\n`; items.forEach(it=>{ txt+=`  ${it.dateGiven||'—'} — ${it.description}: ${money(Number(it.amount||0)+Number(it.extra||0))} AFN${it.extra?' (incl. '+money(it.extra)+' extra)':''}${it.dueDate?' [Due '+it.dueDate+']':''}\n`; }); }
+  txt+=`\nTotal Due: ${money(totalDue(d))} AFN\n`;
   txt+=`Paid: ${money(paidSoFar(d))} AFN\n`;
   txt+=`Remaining: ${money(remaining(d))} AFN\n`;
-  txt+=`Date Given: ${d.dateGiven||'—'}\n`;
-  if(d.dueDate) txt+=`Due Date: ${d.dueDate}\n`;
   txt+=`Status: ${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}\n`;
   if(pays.length){ txt+=`\nPayments:\n`; pays.forEach(p=>{ txt+=`  ${p.date}: ${money(p.amount)} AFN\n`; }); }
-  if(d.notes) txt+=`\nNotes: ${d.notes}\n`;
   try{
     await navigator.clipboard.writeText(txt);
     appAlert('Statement copied — you can paste it into WhatsApp, SMS, or anywhere else.');
@@ -763,20 +875,24 @@ async function exportBackupExcel(){
     await loadXLSX();
     if(!window.XLSX){ await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
     const wb=XLSX.utils.book_new();
-    const debtRows=state.debts.map(d=>({
+    const summaryRows=state.debts.map(d=>({
       ID:d.id,Name:d.name,Phone:d.phone||'',Address:d.address||'',
       Direction:d.direction==='payable'?'Payable (You Owe)':'Receivable (Owed to You)',
       Category:d.category==='short'?'Short Term':'Long Term',
-      'Original Amount':d.amount,'Extra Charge':d.extra||0,'Paid So Far':paidSoFar(d),'Remaining':remaining(d),
+      'Total Due':totalDue(d),'Paid So Far':paidSoFar(d),'Remaining':remaining(d),
       Status:isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active'),
-      'Date Given':d.dateGiven||'','Due Date':d.dueDate||'','Notes':d.notes||''
+      'Date Given':latestDateGiven(d)||'','Due Date':nextDueDate(d)||''
     }));
-    const ws=XLSX.utils.json_to_sheet(debtRows);
-    XLSX.utils.book_append_sheet(wb,ws,'Debts');
+    const ws=XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb,ws,'People');
+    const itemRows=[];
+    state.debts.forEach(d=>{ itemsOf(d).forEach(it=>{ itemRows.push({ID:d.id,Name:d.name,Description:it.description||'',Amount:it.amount||0,'Extra Charge':it.extra||0,'Date Given':it.dateGiven||'','Due Date':it.dueDate||''}); }); });
+    const ws2=XLSX.utils.json_to_sheet(itemRows.length?itemRows:[{ID:'',Name:'',Description:'',Amount:'','Extra Charge':'','Date Given':'','Due Date':''}]);
+    XLSX.utils.book_append_sheet(wb,ws2,'Debts');
     const payRows=[];
     state.debts.forEach(d=>{ (d.payments||[]).forEach(p=>{ payRows.push({ID:d.id,Name:d.name,'Payment Date':p.date,'Payment Amount':p.amount}); }); });
-    const ws2=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':''}]);
-    XLSX.utils.book_append_sheet(wb,ws2,'Payments');
+    const ws3=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':''}]);
+    XLSX.utils.book_append_sheet(wb,ws3,'Payments');
     XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
   }catch(err){ appAlert('Could not create the backup file: '+err.message); }
 }
@@ -786,35 +902,69 @@ async function handleRestoreFile(e){
     await loadXLSX();
     const data=await f.arrayBuffer();
     const wb=XLSX.read(data,{type:'array',cellDates:true});
-    if(!wb.SheetNames.includes('Debts')){ await appAlert('This file doesn\'t look like a Shop Debts backup (no "Debts" sheet found).'); e.target.value=''; return; }
-    const debtRows=XLSX.utils.sheet_to_json(wb.Sheets['Debts'],{defval:''});
+    const hasPeople=wb.SheetNames.includes('People');
+    if(!hasPeople && !wb.SheetNames.includes('Debts')){ await appAlert('This file doesn\'t look like a Shop Debts backup.'); e.target.value=''; return; }
     const payRows=wb.SheetNames.includes('Payments')?XLSX.utils.sheet_to_json(wb.Sheets['Payments'],{defval:''}):[];
-    if(!debtRows.length){ await appAlert('No debts found in that file.'); e.target.value=''; return; }
-    const ok=await appConfirm(`Found ${debtRows.length} debt(s) in this backup. They will be added to your current data (existing debts are not removed or changed). Continue?`);
-    if(!ok){ e.target.value=''; return; }
     const idMap={};
-    debtRows.forEach(r=>{
-      const newId=uid();
-      if(r.ID) idMap[String(r.ID)]=newId;
-      const dirTxt=String(r.Direction||'').toLowerCase();
-      const catTxt=String(r.Category||'').toLowerCase();
-      state.debts.push({
-        id:newId,
-        name:String(r.Name||'').trim()||'Unnamed',
-        phone:String(r.Phone||''),
-        address:String(r.Address||''),
-        direction:dirTxt.includes('payable')?'payable':'receivable',
-        category:catTxt.includes('long')?'long':'short',
-        amount:Number(r['Original Amount'])||0,
-        extra:Number(r['Extra Charge'])||0,
-        dateGiven:r['Date Given']?String(r['Date Given']):today(),
-        dueDate:r['Due Date']?String(r['Due Date']):null,
-        notes:String(r.Notes||''),
-        payments:[],
-        settled:String(r.Status||'').toLowerCase()==='settled',
-        settledAt:String(r.Status||'').toLowerCase()==='settled'?new Date().toISOString():null
+    let personRows;
+    if(hasPeople){
+      // new format: People sheet (person info) + Debts sheet (items, one row per debt)
+      personRows=XLSX.utils.sheet_to_json(wb.Sheets['People'],{defval:''});
+      const itemRows=XLSX.utils.sheet_to_json(wb.Sheets['Debts'],{defval:''});
+      if(!personRows.length){ await appAlert('No people found in that file.'); e.target.value=''; return; }
+      const ok=await appConfirm(`Found ${personRows.length} person/people in this backup. They will be added to your current data (existing debts are not removed or changed). Continue?`);
+      if(!ok){ e.target.value=''; return; }
+      personRows.forEach(r=>{
+        const newId=uid();
+        if(r.ID) idMap[String(r.ID)]=newId;
+        const dirTxt=String(r.Direction||'').toLowerCase();
+        const catTxt=String(r.Category||'').toLowerCase();
+        state.debts.push({
+          id:newId,
+          name:String(r.Name||'').trim()||'Unnamed',
+          phone:String(r.Phone||''),
+          address:String(r.Address||''),
+          direction:dirTxt.includes('payable')?'payable':'receivable',
+          category:catTxt.includes('long')?'long':'short',
+          items:[],
+          payments:[],
+          settled:String(r.Status||'').toLowerCase()==='settled',
+          settledAt:String(r.Status||'').toLowerCase()==='settled'?new Date().toISOString():null
+        });
       });
-    });
+      itemRows.forEach(r=>{
+        const newId=idMap[String(r.ID)]; if(!newId) return;
+        const d=state.debts.find(x=>x.id===newId); if(!d) return;
+        if(r.Description==='' && !r.Amount) return;
+        d.items.push({id:uid(),description:String(r.Description||'Debt'),amount:Number(r.Amount)||0,extra:Number(r['Extra Charge'])||0,
+          dateGiven:r['Date Given']?String(r['Date Given']):today(),dueDate:r['Due Date']?String(r['Due Date']):null});
+      });
+    } else {
+      // legacy format: one row per debt, single amount
+      const debtRows=XLSX.utils.sheet_to_json(wb.Sheets['Debts'],{defval:''});
+      if(!debtRows.length){ await appAlert('No debts found in that file.'); e.target.value=''; return; }
+      const ok=await appConfirm(`Found ${debtRows.length} debt(s) in this backup. They will be added to your current data (existing debts are not removed or changed). Continue?`);
+      if(!ok){ e.target.value=''; return; }
+      debtRows.forEach(r=>{
+        const newId=uid();
+        if(r.ID) idMap[String(r.ID)]=newId;
+        const dirTxt=String(r.Direction||'').toLowerCase();
+        const catTxt=String(r.Category||'').toLowerCase();
+        state.debts.push({
+          id:newId,
+          name:String(r.Name||'').trim()||'Unnamed',
+          phone:String(r.Phone||''),
+          address:String(r.Address||''),
+          direction:dirTxt.includes('payable')?'payable':'receivable',
+          category:catTxt.includes('long')?'long':'short',
+          items:[{id:uid(),description:String(r.Notes||'Debt'),amount:Number(r['Original Amount'])||0,extra:Number(r['Extra Charge'])||0,
+            dateGiven:r['Date Given']?String(r['Date Given']):today(),dueDate:r['Due Date']?String(r['Due Date']):null}],
+          payments:[],
+          settled:String(r.Status||'').toLowerCase()==='settled',
+          settledAt:String(r.Status||'').toLowerCase()==='settled'?new Date().toISOString():null
+        });
+      });
+    }
     payRows.forEach(p=>{
       const newId=idMap[String(p.ID)];
       if(!newId) return;
@@ -825,7 +975,7 @@ async function handleRestoreFile(e){
       }
     });
     save();renderAll();
-    await appAlert(`Restored ${debtRows.length} debt(s) successfully.`);
+    await appAlert(`Restored ${Object.keys(idMap).length} record(s) successfully.`);
   }catch(err){ appAlert('Could not restore this file: '+err.message); }
   e.target.value='';
 }
