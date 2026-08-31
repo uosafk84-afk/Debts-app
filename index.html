@@ -481,7 +481,8 @@ function migrate(){
     }
   });
 }
-function itemsOf(d){ return d.items||[]; }
+function itemsOf(d){ return Array.isArray(d.items)?d.items:[]; }
+function safeCard(d,settledView){ try{ return debtCardHtml(d,settledView); }catch(e){ console.warn('Skipped a corrupted debt record while rendering:',d&&d.id,e); return ''; } }
 function totalDue(d){ return itemsOf(d).reduce((s,it)=>s+Number(it.amount||0)+Number(it.extra||0),0); }
 function paidSoFar(d){ return (d.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0); }
 function remaining(d){ return Math.max(0, totalDue(d)-paidSoFar(d)); }
@@ -542,14 +543,14 @@ function renderDashboard(){
   document.getElementById('dashDueSoon').textContent=dueSoon.length;
   document.getElementById('dashActive').textContent=active.length;
   document.getElementById('overdueList').innerHTML=overdue.length
-    ? overdue.sort((a,b)=>daysOverdue(b)-daysOverdue(a)).map(d=>debtCardHtml(d)).join('')
+    ? overdue.sort((a,b)=>daysOverdue(b)-daysOverdue(a)).map(d=>safeCard(d)).join('')
     : '<div class="empty">No overdue debts. 🎉</div>';
   document.getElementById('dueSoonList').innerHTML=dueSoon.length
-    ? dueSoon.sort((a,b)=>(nextDueDate(a)||'').localeCompare(nextDueDate(b)||'')).map(d=>debtCardHtml(d)).join('')
+    ? dueSoon.sort((a,b)=>(nextDueDate(a)||'').localeCompare(nextDueDate(b)||'')).map(d=>safeCard(d)).join('')
     : '<div class="empty">Nothing due in the next 7 days.</div>';
   const recent=[...state.debts].sort((a,b)=>(latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'')).slice(0,5);
   document.getElementById('recentList').innerHTML=recent.length
-    ? recent.map(d=>debtCardHtml(d)).join('')
+    ? recent.map(d=>safeCard(d)).join('')
     : '<div class="empty">No debts recorded yet.</div>';
 }
 
@@ -571,14 +572,14 @@ function renderList(elId,dir,searchId,chipBoxId){
     return (latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'');
   });
   document.getElementById(elId).innerHTML=list.length
-    ? list.map(d=>debtCardHtml(d)).join('')
+    ? list.map(d=>safeCard(d)).join('')
     : `<div class="empty">No matching debts here.</div>`;
 }
 
 function renderSettled(){
   const list=state.debts.filter(isSettled).sort((a,b)=>(b.settledAt||'').localeCompare(a.settledAt||''));
   document.getElementById('settledList').innerHTML=list.length
-    ? list.map(d=>debtCardHtml(d,true)).join('')
+    ? list.map(d=>safeCard(d,true)).join('')
     : '<div class="empty">No settled debts yet.</div>';
 }
 
