@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop Debts — Data Recovery</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:20px;background:#111;color:#eee}
+h1{font-size:18px}
+.box{background:#1c1c1e;border-radius:12px;padding:16px;margin:14px 0}
+.good{color:#4dd07a;font-weight:700}
+.bad{color:#ff6b6b;font-weight:700}
+pre{white-space:pre-wrap;word-break:break-all;background:#000;padding:12px;border-radius:8px;font-size:11px;max-height:300px;overflow:auto}
+button{background:#0a66d6;color:#fff;border:none;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;margin-right:8px;margin-top:8px}
+.summary{font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>🔎 Shop Debts — Local Data Check</h1>
+<p>This page does NOT change or delete anything. It only reads what is already stored on THIS device/browser, so you can see if it's safe.</p>
+<div class="box" id="result">Checking…</div>
+<div id="actions"></div>
+
+<script>
+const KEY='shop_debts_v1';
+function money(n){return (Number(n)||0).toLocaleString()}
+function render(){
+  const raw = localStorage.getItem(KEY);
+  const resultEl = document.getElementById('result');
+  const actionsEl = document.getElementById('actions');
+  if(!raw){
+    resultEl.innerHTML = '<span class="bad">⚠️ No local data found on this device/browser for this app.</span><p>This does not necessarily mean it is lost forever — check other devices/browsers where you have opened the app, using this same recovery page uploaded there.</p>';
+    return;
+  }
+  let parsed;
+  try{ parsed = JSON.parse(raw); }catch(e){
+    resultEl.innerHTML = '<span class="bad">⚠️ Found data, but it is not valid — could not be read as JSON.</span><pre>'+raw.slice(0,2000)+'</pre>';
+    return;
+  }
+  const debts = parsed.debts || [];
+  const inventory = parsed.inventory || [];
+  const cashLog = parsed.cashLog || [];
+  if(!debts.length && !inventory.length && !cashLog.length){
+    resultEl.innerHTML = '<span class="bad">⚠️ Local data exists, but everything in it is empty on this device.</span>';
+    return;
+  }
+  let totalItems = 0, totalPayments = 0;
+  debts.forEach(d=>{ totalItems += (d.items||[]).length || (d.amount!=null?1:0); totalPayments += (d.payments||[]).length; });
+  resultEl.innerHTML = `<span class="good">✅ Found data on this device!</span>
+    <div class="summary" style="margin-top:8px">
+      People/records: <b>${debts.length}</b><br>
+      Individual debt items: <b>${totalItems}</b><br>
+      Payments recorded: <b>${totalPayments}</b><br>
+      Inventory products: <b>${inventory.length}</b><br>
+      Cash log entries: <b>${cashLog.length}</b>
+    </div>`;
+  const btn1=document.createElement('button');
+  btn1.textContent='⬇️ Download this data as a backup file (.json)';
+  btn1.onclick=()=>{
+    const blob=new Blob([raw],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='shop_debts_recovered_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  actionsEl.appendChild(btn1);
+  const btn2=document.createElement('button');
+  btn2.textContent='📋 Show raw data (to copy/paste)';
+  btn2.onclick=()=>{
+    const pre=document.createElement('pre');
+    pre.textContent=JSON.stringify(parsed,null,2);
+    document.getElementById('result').appendChild(pre);
+  };
+  actionsEl.appendChild(btn2);
+}
+render();
+</script>
+</body>
+</html>

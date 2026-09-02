@@ -162,6 +162,13 @@ textarea{resize:vertical;min-height:56px}
 .statRow:last-child{border-bottom:none}
 .statRow b{font-weight:700}
 .payHistItem{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
+.alphaHeader{font-size:12px;font-weight:800;color:var(--text2);padding:10px 4px 4px;letter-spacing:.04em}
+.alphaRow{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:6px;border-radius:14px;
+  background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.55);cursor:pointer}
+.alphaRow:active{background:rgba(255,255,255,.6)}
+.alphaName{flex:1;min-width:0;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alphaSub{font-size:12px;color:var(--text2);white-space:nowrap}
+.alphaEdit{background:none;border:none;font-size:15px;padding:4px 6px;cursor:pointer;line-height:1}
 .payHistItem:last-child{border-bottom:none}
 .backupBox{margin-bottom:14px}
 .fileLbl{display:inline-block;border:1px dashed rgba(10,102,214,.5);background:rgba(10,102,214,.08);color:#0a4fa0;
@@ -209,6 +216,59 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 </div>
+<div id="inventoryOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:360px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="invTitle">Add Product</div>
+    <div style="text-align:left">
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Product Name *</label>
+      <input type="text" id="invName" placeholder="e.g. Wasleen Soap 500ml" style="margin-bottom:10px;width:100%">
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Quantity in Stock *</label><input type="number" id="invQty" step="1" min="0"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Value per Unit (AFN) *</label><input type="number" id="invValue" step="0.01" min="0"></div>
+      </div>
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeInventoryModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmInventory()">Save</button>
+    </div>
+  </div>
+</div>
+<div id="cashOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:360px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="cashTitle">Cash In</div>
+    <div style="text-align:left">
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN) *</label><input type="number" id="cashAmount" step="0.01" min="0"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label><input type="date" id="cashDate"></div>
+      </div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Note (optional)</label>
+      <input type="text" id="cashNote" placeholder="e.g. Daily sales, Rent payment" style="width:100%">
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeCashModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmCash()">Save</button>
+    </div>
+  </div>
+</div>
+<div id="salesOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:360px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="salesTitle">Today's Sale & Profit</div>
+    <div style="text-align:left">
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label>
+      <input type="date" id="salesDate" style="width:100%;margin-bottom:10px" onchange="salesDateChanged()">
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Total Sale (AFN) *</label><input type="number" id="salesAmount" step="0.01" min="0"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Profit (AFN) *</label><input type="number" id="salesProfit" step="0.01" min="0"></div>
+      </div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Note (optional)</label>
+      <input type="text" id="salesNote" placeholder="e.g. Busy day, Eid rush" style="width:100%">
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeSalesModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmSales()">Save</button>
+    </div>
+  </div>
+</div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
@@ -219,11 +279,20 @@ textarea{resize:vertical;min-height:56px}
 <button type="button" class="navActive" data-view="dashboard" onclick="show('dashboard')"><span class="iconBadge navy">🏠</span>Dashboard</button>
 <button type="button" data-view="recv" onclick="show('recv')"><span class="iconBadge green">🟢</span>Owed to You</button>
 <button type="button" data-view="pay" onclick="show('pay')"><span class="iconBadge red">🔴</span>You Owe</button>
+<button type="button" data-view="alpha" onclick="show('alpha')"><span class="iconBadge navy">🔤</span>All Customers</button>
+<button type="button" data-view="portfolio" onclick="show('portfolio')"><span class="iconBadge orange">📊</span>Portfolio</button>
 <button type="button" data-view="settled" onclick="show('settled')"><span class="iconBadge navy">✅</span>Settled</button>
 <button type="button" data-view="backup" onclick="show('backup')"><span class="iconBadge orange">💾</span>Backup</button>
 </nav>
 
 <section id="dashboard" class="view active">
+<div class="section glass" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div style="display:flex;gap:18px;flex-wrap:wrap">
+    <div><div class="label">Today's Sale</div><div class="value" id="dashTodaySale" style="color:var(--blue)">0 AFN</div></div>
+    <div><div class="label">Today's Profit</div><div class="value" id="dashTodayProfit" style="color:var(--green)">0 AFN</div></div>
+  </div>
+  <button type="button" class="primary" onclick="openSalesModal()">🧾 Log Today's Sale</button>
+</div>
 <div class="cards">
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
@@ -260,6 +329,53 @@ textarea{resize:vertical;min-height:56px}
   <div class="chip" data-t="long" onclick="setChip('payChip',this,'payList','payable','paySearch')">Long Term</div>
 </div>
 <div id="payList"></div>
+</div>
+</section>
+
+<section id="alpha" class="view">
+<div class="section glass">
+<h2>🔤 All Customers (A–Z)</h2>
+<div class="searchBar"><input type="text" id="alphaSearch" placeholder="Search by name or phone…" oninput="renderAlphaList()"></div>
+<div id="alphaList"></div>
+</div>
+</section>
+
+<section id="portfolio" class="view">
+<div class="cards">
+<div class="card glass"><span class="iconBadge orange">💵</span><div class="cardText"><div class="label">Cash on Hand</div><div class="value" id="pfCash">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">📦</span><div class="cardText"><div class="label">Inventory Value</div><div class="value" id="pfInventory">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">Owed to You</div><div class="value" id="pfRecv">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="pfPay">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">📈</span><div class="cardText"><div class="label">Trend</div><div class="value" id="pfTrend" style="font-size:14px">—</div></div></div>
+</div>
+
+<div class="section glass"><h2>📈 Net Worth Trend</h2><div id="pfTrendChart"></div></div>
+<div class="section glass"><h2>🧩 What Makes Up Your Worth</h2><div id="pfCompChart"></div></div>
+
+<div class="section glass">
+<h2>🧾 Daily Sales & Profit</h2>
+<div class="cards" style="margin-bottom:12px">
+<div class="card glass"><span class="iconBadge navy">📅</span><div class="cardText"><div class="label">This Month Sale</div><div class="value" id="pfMonthSale">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge green">💹</span><div class="cardText"><div class="label">This Month Profit</div><div class="value" id="pfMonthProfit">0 AFN</div></div></div>
+</div>
+<div id="dailySalesList"></div>
+<button type="button" class="secondaryBtn" style="width:100%" onclick="openSalesModal()">🧾 Log a Day's Sale</button>
+</div>
+
+<div class="section glass">
+<h2>📦 Inventory</h2>
+<div id="inventoryList"></div>
+<button type="button" class="secondaryBtn" style="width:100%" onclick="openInventoryModal()">➕ Add Product</button>
+</div>
+
+<div class="section glass">
+<h2>💵 Cash Ledger</h2>
+<div class="debtActions" style="margin-bottom:10px">
+<button type="button" class="secondaryBtn" onclick="openCashModal('in')">➕ Cash In</button>
+<button type="button" class="dangerBtn" onclick="openCashModal('out')">➖ Cash Out</button>
+</div>
+<div id="cashLogList"></div>
 </div>
 </section>
 
@@ -413,37 +529,46 @@ async function initFirebaseSync(){
     setSyncBadge(navigator.onLine?'☁️ Synced':'📴 Offline (will sync)','offline');
     const isTyping=()=>{let a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')};
     await migrateOldSingleDoc();
-    db.collection('shopDebtsPeople').onSnapshot(snap=>{
-      let rawDocs=[];
-      snap.forEach(doc=>{ rawDocs.push(doc.data()); });
-      const merged=mergeRemote(rawDocs);
-      if(JSON.stringify(merged)!==JSON.stringify(state.debts)){
-        applyingRemote=true;state.debts=merged;migrate();
-        if(isTyping()) pendingRerender=true; else renderAll();
-        applyingRemote=false;
-      }
-      setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':'☁️ Synced',snap.metadata.fromCache?'offline':'online');
-    },()=>{setSyncBadge('⚠️ Sync error','offline')});
+    let syncedOnce={debts:false,inventory:false,cashLog:false,snapshots:false,dailySales:false};
+    function watch(collectionName,stateKey){
+      db.collection(collectionName).onSnapshot(snap=>{
+        let rawDocs=[]; snap.forEach(doc=>{ rawDocs.push(doc.data()); });
+        const merged=mergeRemoteGeneric(state[stateKey],rawDocs,d=>cloudSyncDoc(collectionName,d));
+        if(JSON.stringify(merged)!==JSON.stringify(state[stateKey])){
+          applyingRemote=true;state[stateKey]=merged;if(stateKey==='debts')migrate();
+          if(isTyping()) pendingRerender=true; else renderAll();
+          applyingRemote=false;
+        }
+        syncedOnce[stateKey]=true;
+        const allDone=Object.values(syncedOnce).every(Boolean);
+        setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':(allDone?'☁️ Synced':'☁️ Syncing…'),snap.metadata.fromCache?'offline':'online');
+      },()=>{setSyncBadge('⚠️ Sync error','offline')});
+    }
+    watch('shopDebtsPeople','debts');
+    watch('shopInventory','inventory');
+    watch('shopCashLog','cashLog');
+    watch('shopSnapshots','snapshots');
+    watch('shopDailySales','dailySales');
     window.addEventListener('online',()=>{setSyncBadge('☁️ Synced','online');refreshFromCloud();});
     window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
   }catch(e){setSyncBadge('📴 Local only','offline')}
 }
 // Merges an incoming cloud snapshot with local state WITHOUT ever silently discarding
-// local records the cloud hasn't seen yet (e.g. debts added while this device was offline).
+// local records the cloud hasn't seen yet (e.g. records added while this device was offline).
 // - Remote non-deleted records win for any id both sides know about.
 // - Remote tombstones (soft-deleted elsewhere) remove the record locally too.
 // - Local records the cloud has never seen are kept AND pushed up to the cloud.
-function mergeRemote(rawDocs){
+function mergeRemoteGeneric(localArr,rawDocs,pushFn){
   const remoteMap={};
   rawDocs.forEach(v=>{ if(v && v.id) remoteMap[v.id]=v; });
   const merged=[];
   Object.values(remoteMap).forEach(v=>{ if(!v._deleted) merged.push(v); });
   const toPush=[];
-  state.debts.forEach(d=>{
+  (localArr||[]).forEach(d=>{
     if(!d || !d.id) return;
     if(!(d.id in remoteMap)){ merged.push(d); toPush.push(d); }
   });
-  toPush.forEach(d=>cloudSyncPerson(d));
+  toPush.forEach(pushFn);
   return merged;
 }
 let oldDocMigrationDone=false;
@@ -467,21 +592,25 @@ async function migrateOldSingleDoc(){
 async function refreshFromCloud(){
   if(!fbReady || !db || !navigator.onLine) return;
   try{
-    const snap=await db.collection('shopDebtsPeople').get({source:'server'});
-    let rawDocs=[];
-    snap.forEach(doc=>{ rawDocs.push(doc.data()); });
-    const merged=mergeRemote(rawDocs);
-    if(JSON.stringify(merged)!==JSON.stringify(state.debts)){
-      applyingRemote=true;state.debts=merged;migrate();
-      storageSet(KEY,JSON.stringify(state));
-      renderAll();
-      applyingRemote=false;
+    const collections={debts:'shopDebtsPeople',inventory:'shopInventory',cashLog:'shopCashLog',snapshots:'shopSnapshots',dailySales:'shopDailySales'};
+    let anyChanged=false;
+    for(const key in collections){
+      const snap=await db.collection(collections[key]).get({source:'server'});
+      let rawDocs=[]; snap.forEach(doc=>{ rawDocs.push(doc.data()); });
+      const merged=mergeRemoteGeneric(state[key],rawDocs,d=>cloudSyncDoc(collections[key],d));
+      if(JSON.stringify(merged)!==JSON.stringify(state[key])){
+        applyingRemote=true;state[key]=merged;if(key==='debts')migrate();applyingRemote=false;
+        anyChanged=true;
+      }
     }
+    if(anyChanged){ storageSet(KEY,JSON.stringify(state)); renderAll(); }
     setSyncBadge('☁️ Synced','online');
   }catch(e){}
 }
-function cloudSyncPerson(d){ if(fbReady && db && !applyingRemote && d && d.id){ db.collection('shopDebtsPeople').doc(d.id).set(d).catch(()=>{}); } }
-function cloudDeletePerson(id){ if(fbReady && db && !applyingRemote && id){ db.collection('shopDebtsPeople').doc(id).set({id,_deleted:true,deletedAt:new Date().toISOString()}).catch(()=>{}); } }
+function cloudSyncDoc(collectionName,d){ if(fbReady && db && !applyingRemote && d && d.id){ db.collection(collectionName).doc(d.id).set(d).catch(()=>{}); } }
+function cloudDeleteDoc(collectionName,id){ if(fbReady && db && !applyingRemote && id){ db.collection(collectionName).doc(id).set({id,_deleted:true,deletedAt:new Date().toISOString()}).catch(()=>{}); } }
+function cloudSyncPerson(d){ cloudSyncDoc('shopDebtsPeople',d); }
+function cloudDeletePerson(id){ cloudDeleteDoc('shopDebtsPeople',id); }
 let saveToastTimer=null;
 function flashSaved(){
   const el=document.getElementById('saveToast');
@@ -493,7 +622,7 @@ function flashSaved(){
 function save(changedPerson){storageSet(KEY,JSON.stringify(state));if(changedPerson)cloudSyncPerson(changedPerson);flashSaved()}
 function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); }catch(e){} }
 
-let state={debts:[]};
+let state={debts:[],inventory:[],cashLog:[],snapshots:[],dailySales:[]};
 function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
 function migrate(){
@@ -532,9 +661,29 @@ function daysOverdue(d){ const dd=nextDueDate(d); if(!dd) return 0; const a=new 
 function isSettled(d){ return d.settled || remaining(d)<=0.004; }
 function recalcSettled(d){ if(remaining(d)<=0.004){ d.settled=true; d.settledAt=d.settledAt||new Date().toISOString(); } else { d.settled=false; d.settledAt=null; } }
 
+function cashBalance(){ return (state.cashLog||[]).reduce((s,c)=>s+(c.type==='in'?Number(c.amount||0):-Number(c.amount||0)),0); }
+function inventoryValue(){ return (state.inventory||[]).reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitValue||0),0); }
+function receivablesTotal(){ return state.debts.filter(d=>d.direction==='receivable' && !isSettled(d)).reduce((s,d)=>s+remaining(d),0); }
+function payablesTotal(){ return state.debts.filter(d=>d.direction==='payable' && !isSettled(d)).reduce((s,d)=>s+remaining(d),0); }
+function netWorth(){ return cashBalance()+inventoryValue()+receivablesTotal()-payablesTotal(); }
+function recordSnapshotIfNeeded(){
+  const d=today();
+  const newSnap={id:d,date:d,cash:cashBalance(),inventoryValue:inventoryValue(),receivables:receivablesTotal(),payables:payablesTotal(),netWorth:netWorth()};
+  const idx=(state.snapshots||[]).findIndex(s=>s.date===d);
+  const existing=idx>=0?state.snapshots[idx]:null;
+  if(existing && existing.cash===newSnap.cash && existing.inventoryValue===newSnap.inventoryValue && existing.receivables===newSnap.receivables && existing.payables===newSnap.payables) return;
+  if(idx>=0) state.snapshots[idx]=newSnap; else state.snapshots.push(newSnap);
+  storageSet(KEY,JSON.stringify(state));
+  cloudSyncDoc('shopSnapshots',newSnap);
+}
+
 async function init(){
-  try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw); state.debts=parsed.debts||[]; migrate(); } }catch(e){}
+  try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw);
+    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[]; state.dailySales=parsed.dailySales||[];
+    migrate();
+  } }catch(e){}
   document.getElementById('fDateGiven').value=today();
+  recordSnapshotIfNeeded();
   renderAll();
   initFirebaseSync();
   scheduleFlush();
@@ -551,7 +700,7 @@ function scheduleFlush(){
 
 let lastListView=null;
 function show(view){
-  if(['recv','pay','settled','dashboard'].includes(view)) lastListView=view;
+  if(['recv','pay','settled','dashboard','alpha'].includes(view)) lastListView=view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById(view).classList.add('active');
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('navActive',b.dataset.view===view));
@@ -563,9 +712,278 @@ function renderAll(){
   renderList('recvList','receivable','recvSearch','recvChip');
   renderList('payList','payable','paySearch','payChip');
   renderSettled();
+  renderAlphaList();
+  renderPortfolio();
+}
+function renderAlphaList(){
+  const el=document.getElementById('alphaList'); if(!el) return;
+  const q=(document.getElementById('alphaSearch')?.value||'').trim().toLowerCase();
+  let list=state.debts.slice();
+  if(q) list=list.filter(d=>(d.name||'').toLowerCase().includes(q) || (d.phone||'').toLowerCase().includes(q));
+  list.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
+  if(!list.length){ el.innerHTML='<div class="empty">No customers yet.</div>'; return; }
+  let html='',lastLetter='';
+  list.forEach(d=>{
+    let letter=(d.name||'?').trim().charAt(0).toUpperCase();
+    if(!/[A-Z]/.test(letter)) letter='#';
+    if(letter!==lastLetter){ html+=`<div class="alphaHeader">${letter}</div>`; lastLetter=letter; }
+    const dirIcon=d.direction==='payable'?'🔴':'🟢';
+    const status=isSettled(d)?'Settled':`${money(remaining(d))} AFN`;
+    html+=`<div class="alphaRow" onclick="openStatement('${d.id}')">
+      <div class="alphaName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
+      <div class="alphaSub">${status}</div>
+      <button type="button" class="alphaEdit" onclick="event.stopPropagation();openEditForm('${d.id}')" aria-label="Edit">✏️</button>
+    </div>`;
+  });
+  el.innerHTML=html;
 }
 
+function renderPortfolio(){
+  const pfCash=document.getElementById('pfCash'); if(!pfCash) return; // portfolio section not in DOM (shouldn't happen)
+  recordSnapshotIfNeeded();
+  const cash=cashBalance(), inv=inventoryValue(), recv=receivablesTotal(), pay=payablesTotal(), net=netWorth();
+  pfCash.textContent=money(cash)+' AFN';
+  document.getElementById('pfInventory').textContent=money(inv)+' AFN';
+  document.getElementById('pfRecv').textContent=money(recv)+' AFN';
+  document.getElementById('pfPay').textContent=money(pay)+' AFN';
+  document.getElementById('pfNet').textContent=money(net)+' AFN';
+
+  const snaps=[...(state.snapshots||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const prior=snaps.filter(s=>s.date<today()).slice(-1)[0];
+  const trendEl=document.getElementById('pfTrend');
+  if(prior){
+    const diff=net-prior.netWorth;
+    const pct=prior.netWorth!==0?(diff/Math.abs(prior.netWorth)*100):0;
+    const up=diff>=0;
+    trendEl.innerHTML=`<span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲':'▼'} ${money(Math.abs(diff))} AFN</span>`;
+    trendEl.title=`${up?'Up':'Down'} ${Math.abs(pct).toFixed(1)}% since ${prior.date}`;
+  } else {
+    trendEl.textContent='First day tracked';
+  }
+
+  document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
+  document.getElementById('pfCompChart').innerHTML=compChartSvg(cash,inv,recv,pay);
+  const monthTotals=monthSalesTotals();
+  document.getElementById('pfMonthSale').textContent=money(monthTotals.sale)+' AFN';
+  document.getElementById('pfMonthProfit').textContent=money(monthTotals.profit)+' AFN';
+  renderDailySalesList();
+  renderInventoryList();
+  renderCashLogList();
+}
+
+function trendChartSvg(snaps){
+  if(snaps.length<2) return '<div class="empty">Not enough history yet — one point is recorded per day, check back tomorrow to see the trend.</div>';
+  const w=320,h=120,pad=12;
+  const vals=snaps.map(s=>s.netWorth);
+  const min=Math.min(...vals), max=Math.max(...vals);
+  const range=(max-min)||1;
+  const stepX=snaps.length>1?(w-pad*2)/(snaps.length-1):0;
+  const pts=snaps.map((s,i)=>{
+    const x=pad+i*stepX;
+    const y=h-pad-((s.netWorth-min)/range)*(h-pad*2);
+    return [x,y];
+  });
+  const up=snaps[snaps.length-1].netWorth>=snaps[0].netWorth;
+  const color=up?'#1e9e5a':'#d6404a';
+  const path='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  const areaPath=path+` L${pts[pts.length-1][0].toFixed(1)},${h-pad} L${pts[0][0].toFixed(1)},${h-pad} Z`;
+  const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${color}"></circle>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:140px;display:block" preserveAspectRatio="none">
+    <path d="${areaPath}" fill="${color}22"></path>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path>
+    ${dots}
+  </svg>
+  <div class="small" style="display:flex;justify-content:space-between;margin-top:2px"><span>${snaps[0].date}</span><span>${snaps[snaps.length-1].date}</span></div>`;
+}
+
+function compChartSvg(cash,inv,recv,pay){
+  const rows=[
+    {label:'💵 Cash',val:cash,color:'#2e8fd6'},
+    {label:'📦 Inventory',val:inv,color:'#f0a83a'},
+    {label:'🟢 Receivables',val:recv,color:'#1e9e5a'},
+    {label:'🔴 Payables',val:pay,color:'#d6404a'}
+  ];
+  const max=Math.max(1,...rows.map(r=>r.val));
+  return rows.map(r=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>${r.label}</span><b>${money(r.val)} AFN</b></div>
+      <div style="background:rgba(0,0,0,.06);border-radius:8px;overflow:hidden;height:10px">
+        <div style="width:${Math.max(2,(r.val/max*100))}%;height:100%;background:${r.color};border-radius:8px"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderInventoryList(){
+  const el=document.getElementById('inventoryList'); if(!el) return;
+  const items=[...(state.inventory||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
+  if(!items.length){ el.innerHTML='<div class="empty">No products yet — add your stock to track its value.</div>'; return; }
+  el.innerHTML=items.map(it=>`
+    <div class="debtCard glass" style="margin-bottom:8px;padding:12px 14px">
+      <div class="debtTop">
+        <div style="min-width:0"><div style="font-weight:700;font-size:13.5px">${escapeHtml(it.name||'Product')}</div>
+          <div class="small">${money(it.unitValue||0)} AFN each</div></div>
+        <div class="debtAmt"><div class="rem" style="font-size:15px">${money((Number(it.qty)||0)*(Number(it.unitValue)||0))} AFN</div><div class="of">${it.qty||0} in stock</div></div>
+      </div>
+      <div class="debtActions" style="margin-top:8px">
+        <button type="button" class="secondaryBtn" onclick="adjustInventoryQty('${it.id}',-1)">➖ Qty</button>
+        <button type="button" class="secondaryBtn" onclick="adjustInventoryQty('${it.id}',1)">➕ Qty</button>
+        <button type="button" class="secondaryBtn" onclick="openInventoryModal('${it.id}')">✏️ Edit</button>
+        <button type="button" class="dangerBtn" onclick="deleteInventoryItem('${it.id}')">🗑 Remove</button>
+      </div>
+    </div>`).join('');
+}
+let editingInventoryId=null;
+function openInventoryModal(id){
+  editingInventoryId=id||null;
+  const it=id?(state.inventory||[]).find(x=>x.id===id):null;
+  document.getElementById('invTitle').textContent=it?'✏️ Edit Product':'➕ Add Product';
+  document.getElementById('invName').value=it?(it.name||''):'';
+  document.getElementById('invQty').value=it?(it.qty||0):'';
+  document.getElementById('invValue').value=it?(it.unitValue||0):'';
+  document.getElementById('inventoryOverlay').style.display='flex';
+}
+function closeInventoryModal(){ document.getElementById('inventoryOverlay').style.display='none'; editingInventoryId=null; }
+async function confirmInventory(){
+  const name=document.getElementById('invName').value.trim();
+  const qty=Number(document.getElementById('invQty').value);
+  const unitValue=Number(document.getElementById('invValue').value);
+  if(!name){ await appAlert('Please enter a product name.'); return; }
+  if(isNaN(qty)||qty<0){ await appAlert('Please enter a valid quantity.'); return; }
+  if(isNaN(unitValue)||unitValue<0){ await appAlert('Please enter a valid value per unit.'); return; }
+  let it;
+  state.inventory=state.inventory||[];
+  if(editingInventoryId){
+    it=state.inventory.find(x=>x.id===editingInventoryId);
+    if(it) Object.assign(it,{name,qty,unitValue});
+  } else {
+    it={id:uid(),name,qty,unitValue};
+    state.inventory.push(it);
+  }
+  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopInventory',it); flashSaved();
+  closeInventoryModal(); renderAll();
+}
+function adjustInventoryQty(id,delta){
+  const it=(state.inventory||[]).find(x=>x.id===id); if(!it) return;
+  it.qty=Math.max(0,Number(it.qty||0)+delta);
+  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopInventory',it); flashSaved();
+  renderAll();
+}
+async function deleteInventoryItem(id){
+  const it=(state.inventory||[]).find(x=>x.id===id); if(!it) return;
+  const ok=await appConfirm(`Remove "${it.name}" from inventory? This cannot be undone.`);
+  if(!ok) return;
+  state.inventory=(state.inventory||[]).filter(x=>x.id!==id);
+  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopInventory',id); flashSaved();
+  renderAll();
+}
+
+function renderCashLogList(){
+  const el=document.getElementById('cashLogList'); if(!el) return;
+  const rows=[...(state.cashLog||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,25);
+  if(!rows.length){ el.innerHTML='<div class="empty">No cash transactions recorded yet.</div>'; return; }
+  el.innerHTML=rows.map(c=>`
+    <div class="payHistItem">
+      <span>${c.date} — ${escapeHtml(c.note||(c.type==='in'?'Cash in':'Cash out'))}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <b style="color:${c.type==='in'?'#1e9e5a':'#d6404a'}">${c.type==='in'?'+':'-'}${money(c.amount)} AFN</b>
+        <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteCashEntry('${c.id}')">🗑</button>
+      </span>
+    </div>`).join('');
+}
+let cashType='in';
+function openCashModal(type){
+  cashType=type;
+  document.getElementById('cashTitle').textContent=type==='in'?'➕ Cash In':'➖ Cash Out';
+  document.getElementById('cashAmount').value='';
+  document.getElementById('cashNote').value='';
+  document.getElementById('cashDate').value=today();
+  document.getElementById('cashOverlay').style.display='flex';
+}
+function closeCashModal(){ document.getElementById('cashOverlay').style.display='none'; }
+async function confirmCash(){
+  const amount=Number(document.getElementById('cashAmount').value);
+  if(!amount||amount<=0){ await appAlert('Please enter a valid amount.'); return; }
+  const note=document.getElementById('cashNote').value.trim();
+  const date=document.getElementById('cashDate').value||today();
+  const entry={id:uid(),date,type:cashType,amount,note};
+  state.cashLog=state.cashLog||[]; state.cashLog.push(entry);
+  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopCashLog',entry); flashSaved();
+  closeCashModal(); renderAll();
+}
+async function deleteCashEntry(id){
+  const c=(state.cashLog||[]).find(x=>x.id===id); if(!c) return;
+  const ok=await appConfirm(`Remove this ${c.type==='in'?'cash in':'cash out'} entry of ${money(c.amount)} AFN?`);
+  if(!ok) return;
+  state.cashLog=(state.cashLog||[]).filter(x=>x.id!==id);
+  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopCashLog',id); flashSaved();
+  renderAll();
+}
+function salesEntryFor(date){ return (state.dailySales||[]).find(s=>s.date===date)||null; }
+function monthSalesTotals(){
+  const ym=today().slice(0,7);
+  return (state.dailySales||[]).filter(s=>(s.date||'').startsWith(ym))
+    .reduce((acc,s)=>{acc.sale+=Number(s.sale||0);acc.profit+=Number(s.profit||0);return acc;},{sale:0,profit:0});
+}
+function openSalesModal(date){
+  const d=date||today();
+  const existing=salesEntryFor(d);
+  document.getElementById('salesTitle').textContent=(d===today()?"Today's":d+"'s")+' Sale & Profit';
+  document.getElementById('salesDate').value=d;
+  document.getElementById('salesAmount').value=existing?existing.sale:'';
+  document.getElementById('salesProfit').value=existing?existing.profit:'';
+  document.getElementById('salesNote').value=existing?(existing.note||''):'';
+  document.getElementById('salesOverlay').style.display='flex';
+}
+function salesDateChanged(){
+  const d=document.getElementById('salesDate').value||today();
+  const existing=salesEntryFor(d);
+  document.getElementById('salesTitle').textContent=(d===today()?"Today's":d+"'s")+' Sale & Profit';
+  document.getElementById('salesAmount').value=existing?existing.sale:'';
+  document.getElementById('salesProfit').value=existing?existing.profit:'';
+  document.getElementById('salesNote').value=existing?(existing.note||''):'';
+}
+function closeSalesModal(){ document.getElementById('salesOverlay').style.display='none'; }
+async function confirmSales(){
+  const date=document.getElementById('salesDate').value||today();
+  const sale=Number(document.getElementById('salesAmount').value);
+  const profit=Number(document.getElementById('salesProfit').value);
+  if(isNaN(sale)||sale<0){ await appAlert('Please enter a valid sale amount.'); return; }
+  if(isNaN(profit)||profit<0){ await appAlert('Please enter a valid profit amount.'); return; }
+  const note=document.getElementById('salesNote').value.trim();
+  state.dailySales=state.dailySales||[];
+  let entry=salesEntryFor(date);
+  if(entry){ Object.assign(entry,{sale,profit,note}); }
+  else { entry={id:date,date,sale,profit,note}; state.dailySales.push(entry); }
+  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopDailySales',entry); flashSaved();
+  closeSalesModal(); renderAll();
+}
+async function deleteSalesEntry(id){
+  const s=(state.dailySales||[]).find(x=>x.id===id); if(!s) return;
+  const ok=await appConfirm(`Remove the sale entry for ${s.date}? This cannot be undone.`);
+  if(!ok) return;
+  state.dailySales=(state.dailySales||[]).filter(x=>x.id!==id);
+  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopDailySales',id); flashSaved();
+  renderAll();
+}
+function renderDailySalesList(){
+  const el=document.getElementById('dailySalesList'); if(!el) return;
+  const rows=[...(state.dailySales||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,25);
+  if(!rows.length){ el.innerHTML='<div class="empty">No daily sales logged yet.</div>'; return; }
+  el.innerHTML=rows.map(s=>`
+    <div class="payHistItem">
+      <span>${s.date}${s.note?' — '+escapeHtml(s.note):''}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <b style="color:var(--blue)">${money(s.sale)} AFN</b>
+        <b style="color:var(--green)">+${money(s.profit)} AFN</b>
+        <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="openSalesModal('${s.date}')">✏️</button>
+        <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteSalesEntry('${s.id}')">🗑</button>
+      </span>
+    </div>`).join('');
+}
 function renderDashboard(){
+  const todaySale=salesEntryFor(today());
+  document.getElementById('dashTodaySale').textContent=money(todaySale?todaySale.sale:0)+' AFN';
+  document.getElementById('dashTodayProfit').textContent=money(todaySale?todaySale.profit:0)+' AFN';
   const active=state.debts.filter(d=>!isSettled(d));
   const recvSum=active.filter(d=>d.direction==='receivable').reduce((s,d)=>s+remaining(d),0);
   const paySum=active.filter(d=>d.direction==='payable').reduce((s,d)=>s+remaining(d),0);
@@ -722,7 +1140,7 @@ async function saveDebtForm(){
   }
   save(d);renderAll();
   const wasEditing=!!editingId; editingId=null;
-  show(wasEditing?(direction==='payable'?'pay':'recv'):'dashboard');
+  show(wasEditing?(lastListView||(direction==='payable'?'pay':'recv')):'dashboard');
 }
 
 let itemPersonId=null, itemEditId=null;
@@ -935,6 +1353,18 @@ async function exportBackupExcel(){
     state.debts.forEach(d=>{ (d.payments||[]).forEach(p=>{ payRows.push({ID:d.id,Name:d.name,'Payment Date':p.date,'Payment Amount':p.amount}); }); });
     const ws3=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':''}]);
     XLSX.utils.book_append_sheet(wb,ws3,'Payments');
+    const invRows=(state.inventory||[]).map(it=>({ID:it.id,Name:it.name,Quantity:it.qty||0,'Value per Unit':it.unitValue||0,'Total Value':(Number(it.qty)||0)*(Number(it.unitValue)||0)}));
+    const ws4=XLSX.utils.json_to_sheet(invRows.length?invRows:[{ID:'',Name:'',Quantity:'','Value per Unit':'','Total Value':''}]);
+    XLSX.utils.book_append_sheet(wb,ws4,'Inventory');
+    const cashRows=(state.cashLog||[]).map(c=>({ID:c.id,Date:c.date,Type:c.type==='in'?'Cash In':'Cash Out',Amount:c.amount,Note:c.note||''}));
+    const ws5=XLSX.utils.json_to_sheet(cashRows.length?cashRows:[{ID:'',Date:'',Type:'',Amount:'',Note:''}]);
+    XLSX.utils.book_append_sheet(wb,ws5,'CashLog');
+    const snapRows=(state.snapshots||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>({Date:s.date,Cash:s.cash,'Inventory Value':s.inventoryValue,Receivables:s.receivables,Payables:s.payables,'Net Worth':s.netWorth}));
+    const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
+    XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
+    const salesRows=(state.dailySales||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(s=>({Date:s.date,Sale:s.sale,Profit:s.profit,Note:s.note||''}));
+    const ws7=XLSX.utils.json_to_sheet(salesRows.length?salesRows:[{Date:'',Sale:'',Profit:'',Note:''}]);
+    XLSX.utils.book_append_sheet(wb,ws7,'DailySales');
     XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
   }catch(err){ appAlert('Could not create the backup file: '+err.message); }
 }
@@ -1016,13 +1446,55 @@ async function handleRestoreFile(e){
         d.payments.push({date:String(p['Payment Date']),amount:Number(p['Payment Amount'])||0});
       }
     });
+    let restoredInvCount=0, restoredCashCount=0;
+    const newInvIds=[], newCashIds=[];
+    if(wb.SheetNames.includes('Inventory')){
+      const invRows=XLSX.utils.sheet_to_json(wb.Sheets['Inventory'],{defval:''});
+      state.inventory=state.inventory||[];
+      invRows.forEach(r=>{
+        if(!r.Name) return;
+        const it={id:uid(),name:String(r.Name),qty:Number(r.Quantity)||0,unitValue:Number(r['Value per Unit'])||0};
+        state.inventory.push(it); newInvIds.push(it.id); restoredInvCount++;
+      });
+    }
+    if(wb.SheetNames.includes('CashLog')){
+      const cashRows=XLSX.utils.sheet_to_json(wb.Sheets['CashLog'],{defval:''});
+      state.cashLog=state.cashLog||[];
+      cashRows.forEach(r=>{
+        if(r.Amount==='' || r.Date==='') return;
+        const c={id:uid(),date:String(r.Date),type:String(r.Type||'').toLowerCase().includes('out')?'out':'in',amount:Number(r.Amount)||0,note:String(r.Note||'')};
+        state.cashLog.push(c); newCashIds.push(c.id); restoredCashCount++;
+      });
+    }
+    let restoredSalesCount=0;
+    const touchedSalesIds=[];
+    if(wb.SheetNames.includes('DailySales')){
+      const salesRows=XLSX.utils.sheet_to_json(wb.Sheets['DailySales'],{defval:''});
+      state.dailySales=state.dailySales||[];
+      salesRows.forEach(r=>{
+        if(!r.Date) return;
+        const d=String(r.Date);
+        let entry=state.dailySales.find(x=>x.date===d);
+        if(entry){ Object.assign(entry,{sale:Number(r.Sale)||0,profit:Number(r.Profit)||0,note:String(r.Note||'')}); }
+        else { entry={id:d,date:d,sale:Number(r.Sale)||0,profit:Number(r.Profit)||0,note:String(r.Note||'')}; state.dailySales.push(entry); }
+        touchedSalesIds.push(entry.id); restoredSalesCount++;
+      });
+    }
     storageSet(KEY,JSON.stringify(state));
     Object.values(idMap).forEach(newId=>{
       const d=state.debts.find(x=>x.id===newId);
       if(d) cloudSyncPerson(d);
     });
+    newInvIds.forEach(id=>{ const it=state.inventory.find(x=>x.id===id); if(it) cloudSyncDoc('shopInventory',it); });
+    newCashIds.forEach(id=>{ const c=state.cashLog.find(x=>x.id===id); if(c) cloudSyncDoc('shopCashLog',c); });
+    touchedSalesIds.forEach(id=>{ const s=state.dailySales.find(x=>x.id===id); if(s) cloudSyncDoc('shopDailySales',s); });
+    recordSnapshotIfNeeded();
     renderAll();
-    await appAlert(`Restored ${Object.keys(idMap).length} record(s) successfully.`);
+    const parts=[`${Object.keys(idMap).length} people/debt record(s)`];
+    if(restoredInvCount) parts.push(`${restoredInvCount} inventory item(s)`);
+    if(restoredCashCount) parts.push(`${restoredCashCount} cash entry(ies)`);
+    if(restoredSalesCount) parts.push(`${restoredSalesCount} daily sale entry(ies)`);
+    await appAlert(`Restored ${parts.join(', ')} successfully.`);
   }catch(err){ appAlert('Could not restore this file: '+err.message); }
   e.target.value='';
 }
