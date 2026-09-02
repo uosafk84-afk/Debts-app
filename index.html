@@ -412,14 +412,15 @@ async function initFirebaseSync(){
     fbReady=true;
     setSyncBadge(navigator.onLine?'☁️ Synced':'📴 Offline (will sync)','offline');
     const isTyping=()=>{let a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')};
-    db.collection('shopDebts').doc('state').onSnapshot(snap=>{
-      if(snap.exists){
-        let incoming=snap.data();
-        if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
-          applyingRemote=true;state.debts=incoming.debts||[];migrate();
-          if(isTyping()) pendingRerender=true; else renderAll();
-          applyingRemote=false;
-        }
+    await migrateOldSingleDoc();
+    db.collection('shopDebtsPeople').onSnapshot(snap=>{
+      let rawDocs=[];
+      snap.forEach(doc=>{ rawDocs.push(doc.data()); });
+      const merged=mergeRemote(rawDocs);
+      if(JSON.stringify(merged)!==JSON.stringify(state.debts)){
+        applyingRemote=true;state.debts=merged;migrate();
+        if(isTyping()) pendingRerender=true; else renderAll();
+        applyingRemote=false;
       }
       setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':'☁️ Synced',snap.metadata.fromCache?'offline':'online');
     },()=>{setSyncBadge('⚠️ Sync error','offline')});
@@ -427,23 +428,60 @@ async function initFirebaseSync(){
     window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
   }catch(e){setSyncBadge('📴 Local only','offline')}
 }
+// Merges an incoming cloud snapshot with local state WITHOUT ever silently discarding
+// local records the cloud hasn't seen yet (e.g. debts added while this device was offline).
+// - Remote non-deleted records win for any id both sides know about.
+// - Remote tombstones (soft-deleted elsewhere) remove the record locally too.
+// - Local records the cloud has never seen are kept AND pushed up to the cloud.
+function mergeRemote(rawDocs){
+  const remoteMap={};
+  rawDocs.forEach(v=>{ if(v && v.id) remoteMap[v.id]=v; });
+  const merged=[];
+  Object.values(remoteMap).forEach(v=>{ if(!v._deleted) merged.push(v); });
+  const toPush=[];
+  state.debts.forEach(d=>{
+    if(!d || !d.id) return;
+    if(!(d.id in remoteMap)){ merged.push(d); toPush.push(d); }
+  });
+  toPush.forEach(d=>cloudSyncPerson(d));
+  return merged;
+}
+let oldDocMigrationDone=false;
+async function migrateOldSingleDoc(){
+  // one-time upgrade: move data out of the old single shared "shopDebts/state" blob
+  // into individual per-person documents, so no single write can ever overwrite everyone else's data again.
+  if(oldDocMigrationDone) return;
+  try{
+    const peopleSnap=await db.collection('shopDebtsPeople').limit(1).get({source:'server'});
+    if(!peopleSnap.empty){ oldDocMigrationDone=true; return; } // already migrated
+    const oldDoc=await db.collection('shopDebts').doc('state').get({source:'server'});
+    if(oldDoc.exists){
+      const oldDebts=(oldDoc.data()||{}).debts||[];
+      const batch=db.batch();
+      oldDebts.forEach(d=>{ if(d&&d.id) batch.set(db.collection('shopDebtsPeople').doc(d.id),d); });
+      if(oldDebts.length) await batch.commit();
+    }
+  }catch(e){}
+  oldDocMigrationDone=true;
+}
 async function refreshFromCloud(){
   if(!fbReady || !db || !navigator.onLine) return;
   try{
-    const snap=await db.collection('shopDebts').doc('state').get({source:'server'});
-    if(snap.exists){
-      const incoming=snap.data();
-      if(JSON.stringify(incoming.debts||[])!==JSON.stringify(state.debts)){
-        applyingRemote=true;state.debts=incoming.debts||[];migrate();
-        storageSet(KEY,JSON.stringify(state));
-        renderAll();
-        applyingRemote=false;
-      }
+    const snap=await db.collection('shopDebtsPeople').get({source:'server'});
+    let rawDocs=[];
+    snap.forEach(doc=>{ rawDocs.push(doc.data()); });
+    const merged=mergeRemote(rawDocs);
+    if(JSON.stringify(merged)!==JSON.stringify(state.debts)){
+      applyingRemote=true;state.debts=merged;migrate();
+      storageSet(KEY,JSON.stringify(state));
+      renderAll();
+      applyingRemote=false;
     }
     setSyncBadge('☁️ Synced','online');
   }catch(e){}
 }
-function cloudSave(){ if(fbReady && db && !applyingRemote){ db.collection('shopDebts').doc('state').set({debts:state.debts}).catch(()=>{}); } }
+function cloudSyncPerson(d){ if(fbReady && db && !applyingRemote && d && d.id){ db.collection('shopDebtsPeople').doc(d.id).set(d).catch(()=>{}); } }
+function cloudDeletePerson(id){ if(fbReady && db && !applyingRemote && id){ db.collection('shopDebtsPeople').doc(id).set({id,_deleted:true,deletedAt:new Date().toISOString()}).catch(()=>{}); } }
 let saveToastTimer=null;
 function flashSaved(){
   const el=document.getElementById('saveToast');
@@ -452,8 +490,8 @@ function flashSaved(){
   clearTimeout(saveToastTimer);
   saveToastTimer=setTimeout(()=>el.classList.remove('show'),1100);
 }
-function save(){storageSet(KEY,JSON.stringify(state));cloudSave();flashSaved()}
-function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); cloudSave(); }catch(e){} }
+function save(changedPerson){storageSet(KEY,JSON.stringify(state));if(changedPerson)cloudSyncPerson(changedPerson);flashSaved()}
+function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); }catch(e){} }
 
 let state={debts:[]};
 function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
@@ -665,8 +703,9 @@ async function saveDebtForm(){
   const address=document.getElementById('fAddress').value.trim();
   const direction=document.querySelector('input[name=fDir]:checked').value;
   const category=document.querySelector('input[name=fTerm]:checked').value;
+  let d;
   if(editingId){
-    const d=state.debts.find(x=>x.id===editingId);
+    d=state.debts.find(x=>x.id===editingId);
     if(d){ Object.assign(d,{name,phone,address,direction,category}); }
   } else {
     const description=document.getElementById('fDesc').value.trim();
@@ -676,11 +715,12 @@ async function saveDebtForm(){
     const extra=Number(document.getElementById('fExtra').value)||0;
     const dateGiven=document.getElementById('fDateGiven').value||today();
     const dueDate=document.getElementById('fDueDate').value||null;
-    state.debts.push({id:uid(),name,phone,address,direction,category,
+    d={id:uid(),name,phone,address,direction,category,
       items:[{id:uid(),description,amount,extra,dateGiven,dueDate}],
-      payments:[],settled:false,settledAt:null});
+      payments:[],settled:false,settledAt:null};
+    state.debts.push(d);
   }
-  save();renderAll();
+  save(d);renderAll();
   const wasEditing=!!editingId; editingId=null;
   show(wasEditing?(direction==='payable'?'pay':'recv'):'dashboard');
 }
@@ -727,7 +767,7 @@ async function confirmItem(){
   }
   recalcSettled(d);
   closeItemModal();
-  save();renderAll();
+  save(d);renderAll();
   if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
 }
 async function deleteItem(personId,itemId){
@@ -737,7 +777,7 @@ async function deleteItem(personId,itemId){
   if(!ok) return;
   d.items=itemsOf(d).filter(x=>x.id!==itemId);
   recalcSettled(d);
-  save();renderAll();
+  save(d);renderAll();
   if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
 }
 
@@ -746,7 +786,8 @@ async function deleteDebt(id){
   const ok=await appConfirm(`Delete this debt record for ${d.name}?\n\nRemaining: ${money(remaining(d))} AFN\n\nThis cannot be undone.`);
   if(!ok) return;
   state.debts=state.debts.filter(x=>x.id!==id);
-  save();renderAll();
+  storageSet(KEY,JSON.stringify(state));cloudDeletePerson(id);flashSaved();
+  renderAll();
   show(lastListView||'dashboard');
 }
 async function markSettled(id){
@@ -754,12 +795,12 @@ async function markSettled(id){
   const ok=await appConfirm(`Mark ${d.name}'s debt as fully settled?\n\nRemaining shown: ${money(remaining(d))} AFN`);
   if(!ok) return;
   d.settled=true; d.settledAt=new Date().toISOString();
-  save();renderAll();
+  save(d);renderAll();
 }
 function reopenDebt(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   d.settled=false; d.settledAt=null;
-  save();renderAll();
+  save(d);renderAll();
 }
 
 let payTargetId=null;
@@ -783,7 +824,7 @@ async function confirmPayment(){
   d.payments.push({date,amount:amt});
   if(remaining(d)<=0.004){ d.settled=true; d.settledAt=new Date().toISOString(); }
   closePayModal();
-  save();renderAll();
+  save(d);renderAll();
   if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
 }
 
@@ -975,7 +1016,12 @@ async function handleRestoreFile(e){
         d.payments.push({date:String(p['Payment Date']),amount:Number(p['Payment Amount'])||0});
       }
     });
-    save();renderAll();
+    storageSet(KEY,JSON.stringify(state));
+    Object.values(idMap).forEach(newId=>{
+      const d=state.debts.find(x=>x.id===newId);
+      if(d) cloudSyncPerson(d);
+    });
+    renderAll();
     await appAlert(`Restored ${Object.keys(idMap).length} record(s) successfully.`);
   }catch(err){ appAlert('Could not restore this file: '+err.message); }
   e.target.value='';
