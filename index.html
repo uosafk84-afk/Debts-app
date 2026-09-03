@@ -161,7 +161,9 @@ textarea{resize:vertical;min-height:56px}
 .statRow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--sep);font-size:13px}
 .statRow:last-child{border-bottom:none}
 .statRow b{font-weight:700}
-.payHistItem{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
+.payHistItem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
+.payDelBtn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:#a52530;line-height:1}
+.payDelBtn:active{opacity:.6}
 .alphaHeader{font-size:12px;font-weight:800;color:var(--text2);padding:10px 4px 4px;letter-spacing:.04em}
 .alphaRow{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:6px;border-radius:14px;
   background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.55);cursor:pointer}
@@ -250,25 +252,6 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 </div>
-<div id="salesOverlay" class="modalOverlay" style="display:none">
-  <div class="modalBox glass" style="max-width:360px">
-    <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="salesTitle">Today's Sale & Profit</div>
-    <div style="text-align:left">
-      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label>
-      <input type="date" id="salesDate" style="width:100%;margin-bottom:10px" onchange="salesDateChanged()">
-      <div class="payRow">
-        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Total Sale (AFN) *</label><input type="number" id="salesAmount" step="0.01" min="0"></div>
-        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Profit (AFN) *</label><input type="number" id="salesProfit" step="0.01" min="0"></div>
-      </div>
-      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Note (optional)</label>
-      <input type="text" id="salesNote" placeholder="e.g. Busy day, Eid rush" style="width:100%">
-    </div>
-    <div class="modalBtns">
-      <button class="mbSecondary" onclick="closeSalesModal()">Cancel</button>
-      <button class="mbPrimary" onclick="confirmSales()">Save</button>
-    </div>
-  </div>
-</div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
@@ -286,13 +269,6 @@ textarea{resize:vertical;min-height:56px}
 </nav>
 
 <section id="dashboard" class="view active">
-<div class="section glass" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-  <div style="display:flex;gap:18px;flex-wrap:wrap">
-    <div><div class="label">Today's Sale</div><div class="value" id="dashTodaySale" style="color:var(--blue)">0 AFN</div></div>
-    <div><div class="label">Today's Profit</div><div class="value" id="dashTodayProfit" style="color:var(--green)">0 AFN</div></div>
-  </div>
-  <button type="button" class="primary" onclick="openSalesModal()">🧾 Log Today's Sale</button>
-</div>
 <div class="cards">
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
@@ -352,16 +328,6 @@ textarea{resize:vertical;min-height:56px}
 
 <div class="section glass"><h2>📈 Net Worth Trend</h2><div id="pfTrendChart"></div></div>
 <div class="section glass"><h2>🧩 What Makes Up Your Worth</h2><div id="pfCompChart"></div></div>
-
-<div class="section glass">
-<h2>🧾 Daily Sales & Profit</h2>
-<div class="cards" style="margin-bottom:12px">
-<div class="card glass"><span class="iconBadge navy">📅</span><div class="cardText"><div class="label">This Month Sale</div><div class="value" id="pfMonthSale">0 AFN</div></div></div>
-<div class="card glass"><span class="iconBadge green">💹</span><div class="cardText"><div class="label">This Month Profit</div><div class="value" id="pfMonthProfit">0 AFN</div></div></div>
-</div>
-<div id="dailySalesList"></div>
-<button type="button" class="secondaryBtn" style="width:100%" onclick="openSalesModal()">🧾 Log a Day's Sale</button>
-</div>
 
 <div class="section glass">
 <h2>📦 Inventory</h2>
@@ -529,7 +495,7 @@ async function initFirebaseSync(){
     setSyncBadge(navigator.onLine?'☁️ Synced':'📴 Offline (will sync)','offline');
     const isTyping=()=>{let a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')};
     await migrateOldSingleDoc();
-    let syncedOnce={debts:false,inventory:false,cashLog:false,snapshots:false,dailySales:false};
+    let syncedOnce={debts:false,inventory:false,cashLog:false,snapshots:false};
     function watch(collectionName,stateKey){
       db.collection(collectionName).onSnapshot(snap=>{
         let rawDocs=[]; snap.forEach(doc=>{ rawDocs.push(doc.data()); });
@@ -548,7 +514,6 @@ async function initFirebaseSync(){
     watch('shopInventory','inventory');
     watch('shopCashLog','cashLog');
     watch('shopSnapshots','snapshots');
-    watch('shopDailySales','dailySales');
     window.addEventListener('online',()=>{setSyncBadge('☁️ Synced','online');refreshFromCloud();});
     window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
   }catch(e){setSyncBadge('📴 Local only','offline')}
@@ -592,7 +557,7 @@ async function migrateOldSingleDoc(){
 async function refreshFromCloud(){
   if(!fbReady || !db || !navigator.onLine) return;
   try{
-    const collections={debts:'shopDebtsPeople',inventory:'shopInventory',cashLog:'shopCashLog',snapshots:'shopSnapshots',dailySales:'shopDailySales'};
+    const collections={debts:'shopDebtsPeople',inventory:'shopInventory',cashLog:'shopCashLog',snapshots:'shopSnapshots'};
     let anyChanged=false;
     for(const key in collections){
       const snap=await db.collection(collections[key]).get({source:'server'});
@@ -622,7 +587,7 @@ function flashSaved(){
 function save(changedPerson){storageSet(KEY,JSON.stringify(state));if(changedPerson)cloudSyncPerson(changedPerson);flashSaved()}
 function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); }catch(e){} }
 
-let state={debts:[],inventory:[],cashLog:[],snapshots:[],dailySales:[]};
+let state={debts:[],inventory:[],cashLog:[],snapshots:[]};
 function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
 function migrate(){
@@ -679,7 +644,7 @@ function recordSnapshotIfNeeded(){
 
 async function init(){
   try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw);
-    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[]; state.dailySales=parsed.dailySales||[];
+    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[];
     migrate();
   } }catch(e){}
   document.getElementById('fDateGiven').value=today();
@@ -763,10 +728,6 @@ function renderPortfolio(){
 
   document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
   document.getElementById('pfCompChart').innerHTML=compChartSvg(cash,inv,recv,pay);
-  const monthTotals=monthSalesTotals();
-  document.getElementById('pfMonthSale').textContent=money(monthTotals.sale)+' AFN';
-  document.getElementById('pfMonthProfit').textContent=money(monthTotals.profit)+' AFN';
-  renderDailySalesList();
   renderInventoryList();
   renderCashLogList();
 }
@@ -918,72 +879,7 @@ async function deleteCashEntry(id){
   storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopCashLog',id); flashSaved();
   renderAll();
 }
-function salesEntryFor(date){ return (state.dailySales||[]).find(s=>s.date===date)||null; }
-function monthSalesTotals(){
-  const ym=today().slice(0,7);
-  return (state.dailySales||[]).filter(s=>(s.date||'').startsWith(ym))
-    .reduce((acc,s)=>{acc.sale+=Number(s.sale||0);acc.profit+=Number(s.profit||0);return acc;},{sale:0,profit:0});
-}
-function openSalesModal(date){
-  const d=date||today();
-  const existing=salesEntryFor(d);
-  document.getElementById('salesTitle').textContent=(d===today()?"Today's":d+"'s")+' Sale & Profit';
-  document.getElementById('salesDate').value=d;
-  document.getElementById('salesAmount').value=existing?existing.sale:'';
-  document.getElementById('salesProfit').value=existing?existing.profit:'';
-  document.getElementById('salesNote').value=existing?(existing.note||''):'';
-  document.getElementById('salesOverlay').style.display='flex';
-}
-function salesDateChanged(){
-  const d=document.getElementById('salesDate').value||today();
-  const existing=salesEntryFor(d);
-  document.getElementById('salesTitle').textContent=(d===today()?"Today's":d+"'s")+' Sale & Profit';
-  document.getElementById('salesAmount').value=existing?existing.sale:'';
-  document.getElementById('salesProfit').value=existing?existing.profit:'';
-  document.getElementById('salesNote').value=existing?(existing.note||''):'';
-}
-function closeSalesModal(){ document.getElementById('salesOverlay').style.display='none'; }
-async function confirmSales(){
-  const date=document.getElementById('salesDate').value||today();
-  const sale=Number(document.getElementById('salesAmount').value);
-  const profit=Number(document.getElementById('salesProfit').value);
-  if(isNaN(sale)||sale<0){ await appAlert('Please enter a valid sale amount.'); return; }
-  if(isNaN(profit)||profit<0){ await appAlert('Please enter a valid profit amount.'); return; }
-  const note=document.getElementById('salesNote').value.trim();
-  state.dailySales=state.dailySales||[];
-  let entry=salesEntryFor(date);
-  if(entry){ Object.assign(entry,{sale,profit,note}); }
-  else { entry={id:date,date,sale,profit,note}; state.dailySales.push(entry); }
-  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopDailySales',entry); flashSaved();
-  closeSalesModal(); renderAll();
-}
-async function deleteSalesEntry(id){
-  const s=(state.dailySales||[]).find(x=>x.id===id); if(!s) return;
-  const ok=await appConfirm(`Remove the sale entry for ${s.date}? This cannot be undone.`);
-  if(!ok) return;
-  state.dailySales=(state.dailySales||[]).filter(x=>x.id!==id);
-  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopDailySales',id); flashSaved();
-  renderAll();
-}
-function renderDailySalesList(){
-  const el=document.getElementById('dailySalesList'); if(!el) return;
-  const rows=[...(state.dailySales||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,25);
-  if(!rows.length){ el.innerHTML='<div class="empty">No daily sales logged yet.</div>'; return; }
-  el.innerHTML=rows.map(s=>`
-    <div class="payHistItem">
-      <span>${s.date}${s.note?' — '+escapeHtml(s.note):''}</span>
-      <span style="display:flex;align-items:center;gap:8px">
-        <b style="color:var(--blue)">${money(s.sale)} AFN</b>
-        <b style="color:var(--green)">+${money(s.profit)} AFN</b>
-        <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="openSalesModal('${s.date}')">✏️</button>
-        <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteSalesEntry('${s.id}')">🗑</button>
-      </span>
-    </div>`).join('');
-}
 function renderDashboard(){
-  const todaySale=salesEntryFor(today());
-  document.getElementById('dashTodaySale').textContent=money(todaySale?todaySale.sale:0)+' AFN';
-  document.getElementById('dashTodayProfit').textContent=money(todaySale?todaySale.profit:0)+' AFN';
   const active=state.debts.filter(d=>!isSettled(d));
   const recvSum=active.filter(d=>d.direction==='receivable').reduce((s,d)=>s+remaining(d),0);
   const paySum=active.filter(d=>d.direction==='payable').reduce((s,d)=>s+remaining(d),0);
@@ -1239,9 +1135,19 @@ async function confirmPayment(){
   const rem=remaining(d);
   if(amt>rem+0.004){ amt=rem; await appAlert(`That's more than what's owed — recording ${money(rem)} AFN to fully settle this debt.`); }
   d.payments=d.payments||[];
-  d.payments.push({date,amount:amt});
+  d.payments.push({id:uid(),date,amount:amt});
   if(remaining(d)<=0.004){ d.settled=true; d.settledAt=new Date().toISOString(); }
   closePayModal();
+  save(d);renderAll();
+  if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
+}
+async function deletePayment(personId,paymentId){
+  const d=state.debts.find(x=>x.id===personId); if(!d) return;
+  const p=(d.payments||[]).find(x=>x.id===paymentId); if(!p) return;
+  const ok=await appConfirm(`Delete this payment of ${money(p.amount)} AFN (${p.date})?\n\nThis cannot be undone.`);
+  if(!ok) return;
+  d.payments=(d.payments||[]).filter(x=>x.id!==paymentId);
+  if(d.settled && remaining(d)>0.004){ d.settled=false; d.settledAt=null; }
   save(d);renderAll();
   if(document.getElementById('statement').classList.contains('active')) openStatement(d.id);
 }
@@ -1266,8 +1172,11 @@ function openStatement(id){
       </div>
     </div>`).join('') : '<div class="empty">No debts listed yet — add one below.</div>';
   const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let paysChanged=false;
+  pays.forEach(p=>{ if(!p.id){ p.id=uid(); paysChanged=true; } });
+  if(paysChanged) save(d);
   const payHtml=pays.length
-    ? pays.map(p=>`<div class="payHistItem"><span>${p.date}</span><span>${money(p.amount)} AFN</span></div>`).join('')
+    ? pays.map(p=>`<div class="payHistItem"><span>${p.date}</span><span>${money(p.amount)} AFN</span><button type="button" class="payDelBtn" onclick="deletePayment('${d.id}','${p.id}')" aria-label="Delete payment">🗑</button></div>`).join('')
     : '<div class="small">No payments recorded yet.</div>';
   const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
   document.getElementById('stBody').innerHTML=`
@@ -1362,9 +1271,6 @@ async function exportBackupExcel(){
     const snapRows=(state.snapshots||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>({Date:s.date,Cash:s.cash,'Inventory Value':s.inventoryValue,Receivables:s.receivables,Payables:s.payables,'Net Worth':s.netWorth}));
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
-    const salesRows=(state.dailySales||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(s=>({Date:s.date,Sale:s.sale,Profit:s.profit,Note:s.note||''}));
-    const ws7=XLSX.utils.json_to_sheet(salesRows.length?salesRows:[{Date:'',Sale:'',Profit:'',Note:''}]);
-    XLSX.utils.book_append_sheet(wb,ws7,'DailySales');
     XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
   }catch(err){ appAlert('Could not create the backup file: '+err.message); }
 }
@@ -1466,20 +1372,6 @@ async function handleRestoreFile(e){
         state.cashLog.push(c); newCashIds.push(c.id); restoredCashCount++;
       });
     }
-    let restoredSalesCount=0;
-    const touchedSalesIds=[];
-    if(wb.SheetNames.includes('DailySales')){
-      const salesRows=XLSX.utils.sheet_to_json(wb.Sheets['DailySales'],{defval:''});
-      state.dailySales=state.dailySales||[];
-      salesRows.forEach(r=>{
-        if(!r.Date) return;
-        const d=String(r.Date);
-        let entry=state.dailySales.find(x=>x.date===d);
-        if(entry){ Object.assign(entry,{sale:Number(r.Sale)||0,profit:Number(r.Profit)||0,note:String(r.Note||'')}); }
-        else { entry={id:d,date:d,sale:Number(r.Sale)||0,profit:Number(r.Profit)||0,note:String(r.Note||'')}; state.dailySales.push(entry); }
-        touchedSalesIds.push(entry.id); restoredSalesCount++;
-      });
-    }
     storageSet(KEY,JSON.stringify(state));
     Object.values(idMap).forEach(newId=>{
       const d=state.debts.find(x=>x.id===newId);
@@ -1487,13 +1379,11 @@ async function handleRestoreFile(e){
     });
     newInvIds.forEach(id=>{ const it=state.inventory.find(x=>x.id===id); if(it) cloudSyncDoc('shopInventory',it); });
     newCashIds.forEach(id=>{ const c=state.cashLog.find(x=>x.id===id); if(c) cloudSyncDoc('shopCashLog',c); });
-    touchedSalesIds.forEach(id=>{ const s=state.dailySales.find(x=>x.id===id); if(s) cloudSyncDoc('shopDailySales',s); });
     recordSnapshotIfNeeded();
     renderAll();
     const parts=[`${Object.keys(idMap).length} people/debt record(s)`];
     if(restoredInvCount) parts.push(`${restoredInvCount} inventory item(s)`);
     if(restoredCashCount) parts.push(`${restoredCashCount} cash entry(ies)`);
-    if(restoredSalesCount) parts.push(`${restoredSalesCount} daily sale entry(ies)`);
     await appAlert(`Restored ${parts.join(', ')} successfully.`);
   }catch(err){ appAlert('Could not restore this file: '+err.message); }
   e.target.value='';
