@@ -698,6 +698,7 @@ function renderAlphaList(){
       <div class="alphaName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
       <div class="alphaSub">${status}</div>
       <button type="button" class="alphaEdit" onclick="event.stopPropagation();openEditForm('${d.id}')" aria-label="Edit">✏️</button>
+      <button type="button" class="alphaEdit" onclick="event.stopPropagation();deleteDebt('${d.id}')" aria-label="Delete" style="color:#a52530">🗑</button>
     </div>`;
   });
   el.innerHTML=html;
