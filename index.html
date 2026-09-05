@@ -235,6 +235,37 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 </div>
+<div id="sellOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:360px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">💰 Sell Product</div>
+    <div class="small" id="sellStockInfo" style="margin-bottom:10px"></div>
+    <div style="text-align:left">
+      <div class="payRow">
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Quantity Sold *</label><input type="number" id="sellQty" step="1" min="1" value="1"></div>
+        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Sale Price / Unit (AFN) *</label><input type="number" id="sellPrice" step="0.01" min="0"></div>
+      </div>
+      <div style="font-size:12.5px;font-weight:700;margin:2px 0 10px" id="sellTotal">Total: 0 AFN</div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label>
+      <input type="date" id="sellDate" style="margin-bottom:10px;width:100%">
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">How was it paid?</label>
+      <div class="choice2" style="margin:6px 0 10px">
+        <label class="cRecv"><input type="radio" name="sellPayType" value="cash" checked onchange="toggleSellCustomerField()"><span>💵 Cash Sale</span></label>
+        <label class="cPay"><input type="radio" name="sellPayType" value="credit" onchange="toggleSellCustomerField()"><span>🧾 On Credit</span></label>
+      </div>
+      <div id="sellCustomerWrap" style="display:none">
+        <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Customer Name *</label>
+        <input type="text" id="sellCustomer" placeholder="e.g. Rahim Khan" style="margin-bottom:10px;width:100%">
+        <div class="small" style="margin-bottom:10px">This adds a new debt owed to you for the sale amount.</div>
+      </div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Note (optional)</label>
+      <input type="text" id="sellNote" placeholder="e.g. Evening sale" style="width:100%">
+    </div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeSellModal()">Cancel</button>
+      <button class="mbPrimary" onclick="confirmSell()">Save Sale</button>
+    </div>
+  </div>
+</div>
 <div id="cashOverlay" class="modalOverlay" style="display:none">
   <div class="modalBox glass" style="max-width:360px">
     <div style="font-weight:700;font-size:15px;margin-bottom:12px" id="cashTitle">Cash In</div>
@@ -272,7 +303,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="cards">
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
-<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Position</div><div class="value" id="dashNet">0 AFN</div></div></div>
+<div class="card glass" title="Owed to You minus You Owe — money debts only, not counting inventory or cash. See Portfolio → Net Worth for your full financial position."><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Debt Position</div><div class="value" id="dashNet">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">⚠️</span><div class="cardText"><div class="label">Overdue</div><div class="value" id="dashOverdue">0</div></div></div>
 <div class="card glass"><span class="iconBadge orange">⏳</span><div class="cardText"><div class="label">Due in 7 Days</div><div class="value" id="dashDueSoon">0</div></div></div>
 <div class="card glass"><span class="iconBadge navy">📋</span><div class="cardText"><div class="label">Active Debts</div><div class="value" id="dashActive">0</div></div></div>
@@ -322,7 +353,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="card glass"><span class="iconBadge navy">📦</span><div class="cardText"><div class="label">Inventory Value</div><div class="value" id="pfInventory">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">Owed to You</div><div class="value" id="pfRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="pfPay">0 AFN</div></div></div>
-<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div></div></div>
+<div class="card glass" title="Cash + Inventory + Receivables − Payables. This is your true overall business worth."><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge navy">📈</span><div class="cardText"><div class="label">Trend</div><div class="value" id="pfTrend" style="font-size:14px">—</div></div></div>
 </div>
 
@@ -787,6 +818,7 @@ function renderInventoryList(){
         <div class="debtAmt"><div class="rem" style="font-size:15px">${money((Number(it.qty)||0)*(Number(it.unitValue)||0))} AFN</div><div class="of">${it.qty||0} in stock</div></div>
       </div>
       <div class="debtActions" style="margin-top:8px">
+        <button type="button" class="mbPrimary" style="padding:8px 10px;font-size:12.5px" onclick="openSellModal('${it.id}')">💰 Sell</button>
         <button type="button" class="secondaryBtn" onclick="adjustInventoryQty('${it.id}',-1)">➖ Qty</button>
         <button type="button" class="secondaryBtn" onclick="adjustInventoryQty('${it.id}',1)">➕ Qty</button>
         <button type="button" class="secondaryBtn" onclick="openInventoryModal('${it.id}')">✏️ Edit</button>
@@ -837,6 +869,71 @@ async function deleteInventoryItem(id){
   state.inventory=(state.inventory||[]).filter(x=>x.id!==id);
   storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopInventory',id); flashSaved();
   renderAll();
+}
+
+let sellItemId=null;
+function openSellModal(id){
+  const it=(state.inventory||[]).find(x=>x.id===id); if(!it) return;
+  sellItemId=id;
+  document.getElementById('sellStockInfo').textContent=`${it.name} — ${it.qty||0} in stock`;
+  document.getElementById('sellQty').value=1;
+  document.getElementById('sellQty').max=it.qty||0;
+  document.getElementById('sellPrice').value=it.unitValue||0;
+  document.getElementById('sellDate').value=today();
+  document.getElementById('sellNote').value='';
+  document.getElementById('sellCustomer').value='';
+  document.querySelector('input[name=sellPayType][value=cash]').checked=true;
+  toggleSellCustomerField();
+  updateSellTotal();
+  document.getElementById('sellOverlay').style.display='flex';
+}
+function closeSellModal(){ document.getElementById('sellOverlay').style.display='none'; sellItemId=null; }
+function toggleSellCustomerField(){
+  const credit=document.querySelector('input[name=sellPayType]:checked').value==='credit';
+  document.getElementById('sellCustomerWrap').style.display=credit?'block':'none';
+}
+function updateSellTotal(){
+  const qty=Number(document.getElementById('sellQty').value)||0;
+  const price=Number(document.getElementById('sellPrice').value)||0;
+  document.getElementById('sellTotal').textContent='Total: '+money(qty*price)+' AFN';
+}
+document.addEventListener('input',e=>{
+  if(e.target && (e.target.id==='sellQty'||e.target.id==='sellPrice')) updateSellTotal();
+});
+async function confirmSell(){
+  const it=(state.inventory||[]).find(x=>x.id===sellItemId); if(!it) return;
+  const qty=Number(document.getElementById('sellQty').value);
+  const price=Number(document.getElementById('sellPrice').value);
+  const date=document.getElementById('sellDate').value||today();
+  const note=document.getElementById('sellNote').value.trim();
+  const credit=document.querySelector('input[name=sellPayType]:checked').value==='credit';
+  if(!qty||qty<=0){ await appAlert('Please enter a valid quantity.'); return; }
+  if(qty>(it.qty||0)){ await appAlert(`Only ${it.qty||0} in stock — can't sell ${qty}.`); return; }
+  if(isNaN(price)||price<0){ await appAlert('Please enter a valid sale price.'); return; }
+  const total=qty*price;
+  let customer='';
+  if(credit){
+    customer=document.getElementById('sellCustomer').value.trim();
+    if(!customer){ await appAlert('Please enter the customer name for a credit sale.'); return; }
+  }
+  it.qty=Math.max(0,(it.qty||0)-qty);
+  const saleDesc=`Sale: ${it.name} x${qty}`+(note?` (${note})`:'');
+  let touchedDebt=null;
+  if(credit){
+    touchedDebt={id:uid(),name:customer,phone:'',address:'',direction:'receivable',category:'short',
+      items:[{id:uid(),description:saleDesc,amount:total,extra:0,dateGiven:date,dueDate:null}],
+      payments:[],settled:false,settledAt:null};
+    state.debts.push(touchedDebt);
+  } else {
+    const entry={id:uid(),date,type:'in',amount:total,note:saleDesc};
+    state.cashLog=state.cashLog||[]; state.cashLog.push(entry);
+    cloudSyncDoc('shopCashLog',entry);
+  }
+  storageSet(KEY,JSON.stringify(state));
+  cloudSyncDoc('shopInventory',it);
+  if(touchedDebt) cloudSyncPerson(touchedDebt);
+  flashSaved();
+  closeSellModal(); renderAll();
 }
 
 function renderCashLogList(){
