@@ -85,6 +85,7 @@ button.primary:active{transform:scale(.95)}
 .iconBadge.green{background:linear-gradient(160deg,#6fe08a,#1f9d55)}
 .label{font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
 .value{font-size:16.5px;font-weight:700;margin-top:2px;color:var(--text)}
+.hint{font-size:9.5px;color:var(--text2);opacity:.75;margin-top:1px;line-height:1.25}
 .section{margin:10px 0;padding:16px}
 .section h2{margin:0 0 10px;font-size:15.5px;font-weight:700;letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
 .small{font-size:11.5px;color:var(--text2)}
@@ -303,7 +304,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="cards">
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
-<div class="card glass" title="Owed to You minus You Owe — money debts only, not counting inventory or cash. See Portfolio → Net Worth for your full financial position."><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Debt Position</div><div class="value" id="dashNet">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Debt Position</div><div class="value" id="dashNet">0 AFN</div><div class="hint">Receivables − Payables only (see Net Worth in Portfolio for full picture)</div></div></div>
 <div class="card glass"><span class="iconBadge red">⚠️</span><div class="cardText"><div class="label">Overdue</div><div class="value" id="dashOverdue">0</div></div></div>
 <div class="card glass"><span class="iconBadge orange">⏳</span><div class="cardText"><div class="label">Due in 7 Days</div><div class="value" id="dashDueSoon">0</div></div></div>
 <div class="card glass"><span class="iconBadge navy">📋</span><div class="cardText"><div class="label">Active Debts</div><div class="value" id="dashActive">0</div></div></div>
@@ -353,7 +354,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="card glass"><span class="iconBadge navy">📦</span><div class="cardText"><div class="label">Inventory Value</div><div class="value" id="pfInventory">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">Owed to You</div><div class="value" id="pfRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="pfPay">0 AFN</div></div></div>
-<div class="card glass" title="Cash + Inventory + Receivables − Payables. This is your true overall business worth."><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div></div></div>
+<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div><div class="hint">Cash + Inventory + Receivables − Payables</div></div></div>
 <div class="card glass"><span class="iconBadge navy">📈</span><div class="cardText"><div class="label">Trend</div><div class="value" id="pfTrend" style="font-size:14px">—</div></div></div>
 </div>
 
