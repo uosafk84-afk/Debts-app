@@ -355,10 +355,9 @@ textarea{resize:vertical;min-height:56px}
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">Owed to You</div><div class="value" id="pfRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="pfPay">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div><div class="hint">Cash + Inventory + Receivables − Payables</div></div></div>
-<div class="card glass"><span class="iconBadge navy">📈</span><div class="cardText"><div class="label">Trend</div><div class="value" id="pfTrend" style="font-size:14px">—</div></div></div>
 </div>
 
-<div class="section glass"><h2>📈 Net Worth Trend</h2><div id="pfTrendChart"></div></div>
+<div class="section glass"><h2>📈 Net Worth Trend</h2><div class="small" id="pfTrendCaption" style="margin-bottom:6px"></div><div id="pfTrendChart"></div></div>
 <div class="section glass"><h2>🧩 What Makes Up Your Worth</h2><div id="pfCompChart"></div></div>
 
 <div class="section glass">
@@ -748,15 +747,14 @@ function renderPortfolio(){
 
   const snaps=[...(state.snapshots||[])].sort((a,b)=>a.date.localeCompare(b.date));
   const prior=snaps.filter(s=>s.date<today()).slice(-1)[0];
-  const trendEl=document.getElementById('pfTrend');
+  const trendEl=document.getElementById('pfTrendCaption');
   if(prior){
     const diff=net-prior.netWorth;
     const pct=prior.netWorth!==0?(diff/Math.abs(prior.netWorth)*100):0;
     const up=diff>=0;
-    trendEl.innerHTML=`<span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲':'▼'} ${money(Math.abs(diff))} AFN</span>`;
-    trendEl.title=`${up?'Up':'Down'} ${Math.abs(pct).toFixed(1)}% since ${prior.date}`;
+    trendEl.innerHTML=`Net Worth is currently <b>${money(net)} AFN</b> — <span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲ up':'▼ down'} ${money(Math.abs(diff))} AFN (${Math.abs(pct).toFixed(1)}%)</span> since ${prior.date}`;
   } else {
-    trendEl.textContent='First day tracked';
+    trendEl.textContent=`Net Worth is currently ${money(net)} AFN — first day tracked, check back tomorrow for a trend.`;
   }
 
   document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
