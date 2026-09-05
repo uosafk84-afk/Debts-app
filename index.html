@@ -748,13 +748,19 @@ function renderPortfolio(){
   const snaps=[...(state.snapshots||[])].sort((a,b)=>a.date.localeCompare(b.date));
   const prior=snaps.filter(s=>s.date<today()).slice(-1)[0];
   const trendEl=document.getElementById('pfTrendCaption');
+  const statusLine=net>=0
+    ? `Overall you're positive — assets add up to <b>${money(net)} AFN more</b> than what you owe.`
+    : `Overall you owe <b>${money(Math.abs(net))} AFN more</b> than your assets add up to.`;
   if(prior){
     const diff=net-prior.netWorth;
     const pct=prior.netWorth!==0?(diff/Math.abs(prior.netWorth)*100):0;
     const up=diff>=0;
-    trendEl.innerHTML=`Net Worth is currently <b>${money(net)} AFN</b> — <span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲ up':'▼ down'} ${money(Math.abs(diff))} AFN (${Math.abs(pct).toFixed(1)}%)</span> since ${prior.date}`;
+    const moveLine=diff===0
+      ? `No change since ${prior.date} (still ${money(net)} AFN).`
+      : `<span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲ Up':'▼ Down'} ${money(Math.abs(diff))} AFN (${Math.abs(pct).toFixed(1)}%)</span> since ${prior.date} (was ${money(prior.netWorth)} AFN, now ${money(net)} AFN).`;
+    trendEl.innerHTML=`${statusLine}<br>${moveLine}`;
   } else {
-    trendEl.textContent=`Net Worth is currently ${money(net)} AFN — first day tracked, check back tomorrow for a trend.`;
+    trendEl.innerHTML=`${statusLine}<br>This is the first day tracked — check back tomorrow to see the trend.`;
   }
 
   document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
