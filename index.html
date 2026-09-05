@@ -746,22 +746,12 @@ function renderPortfolio(){
   document.getElementById('pfNet').textContent=money(net)+' AFN';
 
   const snaps=[...(state.snapshots||[])].sort((a,b)=>a.date.localeCompare(b.date));
-  const prior=snaps.filter(s=>s.date<today()).slice(-1)[0];
   const trendEl=document.getElementById('pfTrendCaption');
-  const statusLine=net>=0
-    ? `Overall you're positive — assets add up to <b>${money(net)} AFN more</b> than what you owe.`
-    : `Overall you owe <b>${money(Math.abs(net))} AFN more</b> than your assets add up to.`;
-  if(prior){
-    const diff=net-prior.netWorth;
-    const pct=prior.netWorth!==0?(diff/Math.abs(prior.netWorth)*100):0;
-    const up=diff>=0;
-    const moveLine=diff===0
-      ? `No change since ${prior.date} (still ${money(net)} AFN).`
-      : `<span style="color:${up?'#1e9e5a':'#d6404a'}">${up?'▲ Up':'▼ Down'} ${money(Math.abs(diff))} AFN (${Math.abs(pct).toFixed(1)}%)</span> since ${prior.date} (was ${money(prior.netWorth)} AFN, now ${money(net)} AFN).`;
-    trendEl.innerHTML=`${statusLine}<br>${moveLine}`;
-  } else {
-    trendEl.innerHTML=`${statusLine}<br>This is the first day tracked — check back tomorrow to see the trend.`;
-  }
+  const up=net>=0;
+  const statusLine=up
+    ? `<span style="color:#1e9e5a;font-weight:700">▲ You're Up</span> — assets add up to <b>${money(net)} AFN more</b> than what you owe.`
+    : `<span style="color:#d6404a;font-weight:700">▼ You're Down</span> — you owe <b>${money(Math.abs(net))} AFN more</b> than your assets add up to.`;
+  trendEl.innerHTML=statusLine;
 
   document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
   document.getElementById('pfCompChart').innerHTML=compChartSvg(cash,inv,recv,pay);
@@ -781,7 +771,7 @@ function trendChartSvg(snaps){
     const y=h-pad-((s.netWorth-min)/range)*(h-pad*2);
     return [x,y];
   });
-  const up=snaps[snaps.length-1].netWorth>=snaps[0].netWorth;
+  const up=snaps[snaps.length-1].netWorth>=0;
   const color=up?'#1e9e5a':'#d6404a';
   const path='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
   const areaPath=path+` L${pts[pts.length-1][0].toFixed(1)},${h-pad} L${pts[0][0].toFixed(1)},${h-pad} Z`;
