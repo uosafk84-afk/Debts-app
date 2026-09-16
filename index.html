@@ -11,8 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Shop Debts">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-app-compat.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-firestore-compat.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
@@ -449,9 +447,10 @@ function appAlert(msg){
     document.getElementById('modalMsg').textContent=msg;
     btns.innerHTML='';
     const ok=document.createElement('button');ok.textContent='OK';ok.className='mbPrimary';
-    ok.onclick=()=>{ov.style.display='none';resolve(true)};
+    ok.onclick=()=>{resolve(true);history.back()};
     btns.appendChild(ok);
     ov.style.display='flex';
+    pushModalState('modalOverlay');
     ok.focus();
   });
 }
@@ -461,11 +460,12 @@ function appConfirm(msg){
     document.getElementById('modalMsg').textContent=msg;
     btns.innerHTML='';
     const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.className='mbSecondary';
-    cancel.onclick=()=>{ov.style.display='none';resolve(false)};
+    cancel.onclick=()=>{resolve(false);history.back()};
     const ok=document.createElement('button');ok.textContent='OK';ok.className='mbPrimary';
-    ok.onclick=()=>{ov.style.display='none';resolve(true)};
+    ok.onclick=()=>{resolve(true);history.back()};
     btns.appendChild(cancel);btns.appendChild(ok);
     ov.style.display='flex';
+    pushModalState('modalOverlay');
     ok.focus();
   });
 }
@@ -484,129 +484,21 @@ function storageSet(key,value){
   }
   try{ localStorage.setItem(key,value) }catch(e){}
 }
-const firebaseConfig={apiKey:"AIzaSyBDNC1IxI90kCIJ1MXYQxsGJtjFOTLVY2o",authDomain:"shop-calculation-app.firebaseapp.com",projectId:"shop-calculation-app",storageBucket:"shop-calculation-app.firebasestorage.app",messagingSenderId:"898165250770",appId:"1:898165250770:web:598dc9b7457bd8db432b0b"};
-let db=null,fbReady=false,applyingRemote=false,pendingRerender=false;
+let pendingRerender=false;
 document.addEventListener('focusout',e=>{
   if(pendingRerender && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')){
     pendingRerender=false;
     setTimeout(()=>{ if(!document.activeElement||(document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')) renderAll(); },0);
   }
 });
-function setSyncBadge(text,cls){const el=document.getElementById('syncBadge');if(el){el.textContent=text;el.className='syncBadge '+cls}}
-function waitForFirebase(){
-  return new Promise(resolve=>{
-    if(!navigator.onLine) return resolve(false);
-    if(window.firebase) return resolve(true);
-    let tries=0;
-    const iv=setInterval(()=>{
-      if(window.firebase){clearInterval(iv);resolve(true)}
-      else if(++tries>50){clearInterval(iv);resolve(false)}
-    },100);
-  });
-}
-let firebaseInitAttempted=false;
-async function initFirebaseSync(){
-  const ok=await waitForFirebase();
-  if(!ok){
-    setSyncBadge('📴 Local only','offline');
-    if(!firebaseInitAttempted){
-      window.addEventListener('online',function retrySync(){
-        window.removeEventListener('online',retrySync);
-        initFirebaseSync();
-      },{once:true});
-    }
-    return;
-  }
-  firebaseInitAttempted=true;
-  try{
-    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db=firebase.firestore();
-    try{ await db.enablePersistence({synchronizeTabs:true}); }catch(e){}
-    fbReady=true;
-    setSyncBadge(navigator.onLine?'☁️ Synced':'📴 Offline (will sync)','offline');
-    const isTyping=()=>{let a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')};
-    await migrateOldSingleDoc();
-    let syncedOnce={debts:false,inventory:false,cashLog:false,snapshots:false};
-    function watch(collectionName,stateKey){
-      db.collection(collectionName).onSnapshot(snap=>{
-        let rawDocs=[]; snap.forEach(doc=>{ rawDocs.push(doc.data()); });
-        const merged=mergeRemoteGeneric(state[stateKey],rawDocs,d=>cloudSyncDoc(collectionName,d));
-        if(JSON.stringify(merged)!==JSON.stringify(state[stateKey])){
-          applyingRemote=true;state[stateKey]=merged;if(stateKey==='debts')migrate();
-          if(isTyping()) pendingRerender=true; else renderAll();
-          applyingRemote=false;
-        }
-        syncedOnce[stateKey]=true;
-        const allDone=Object.values(syncedOnce).every(Boolean);
-        setSyncBadge(snap.metadata.fromCache?'📴 Offline (will sync)':(allDone?'☁️ Synced':'☁️ Syncing…'),snap.metadata.fromCache?'offline':'online');
-      },()=>{setSyncBadge('⚠️ Sync error','offline')});
-    }
-    watch('shopDebtsPeople','debts');
-    watch('shopInventory','inventory');
-    watch('shopCashLog','cashLog');
-    watch('shopSnapshots','snapshots');
-    window.addEventListener('online',()=>{setSyncBadge('☁️ Synced','online');refreshFromCloud();});
-    window.addEventListener('offline',()=>setSyncBadge('📴 Offline (will sync)','offline'));
-  }catch(e){setSyncBadge('📴 Local only','offline')}
-}
-// Merges an incoming cloud snapshot with local state WITHOUT ever silently discarding
-// local records the cloud hasn't seen yet (e.g. records added while this device was offline).
-// - Remote non-deleted records win for any id both sides know about.
-// - Remote tombstones (soft-deleted elsewhere) remove the record locally too.
-// - Local records the cloud has never seen are kept AND pushed up to the cloud.
-function mergeRemoteGeneric(localArr,rawDocs,pushFn){
-  const remoteMap={};
-  rawDocs.forEach(v=>{ if(v && v.id) remoteMap[v.id]=v; });
-  const merged=[];
-  Object.values(remoteMap).forEach(v=>{ if(!v._deleted) merged.push(v); });
-  const toPush=[];
-  (localArr||[]).forEach(d=>{
-    if(!d || !d.id) return;
-    if(!(d.id in remoteMap)){ merged.push(d); toPush.push(d); }
-  });
-  toPush.forEach(pushFn);
-  return merged;
-}
-let oldDocMigrationDone=false;
-async function migrateOldSingleDoc(){
-  // one-time upgrade: move data out of the old single shared "shopDebts/state" blob
-  // into individual per-person documents, so no single write can ever overwrite everyone else's data again.
-  if(oldDocMigrationDone) return;
-  try{
-    const peopleSnap=await db.collection('shopDebtsPeople').limit(1).get({source:'server'});
-    if(!peopleSnap.empty){ oldDocMigrationDone=true; return; } // already migrated
-    const oldDoc=await db.collection('shopDebts').doc('state').get({source:'server'});
-    if(oldDoc.exists){
-      const oldDebts=(oldDoc.data()||{}).debts||[];
-      const batch=db.batch();
-      oldDebts.forEach(d=>{ if(d&&d.id) batch.set(db.collection('shopDebtsPeople').doc(d.id),d); });
-      if(oldDebts.length) await batch.commit();
-    }
-  }catch(e){}
-  oldDocMigrationDone=true;
-}
-async function refreshFromCloud(){
-  if(!fbReady || !db || !navigator.onLine) return;
-  try{
-    const collections={debts:'shopDebtsPeople',inventory:'shopInventory',cashLog:'shopCashLog',snapshots:'shopSnapshots'};
-    let anyChanged=false;
-    for(const key in collections){
-      const snap=await db.collection(collections[key]).get({source:'server'});
-      let rawDocs=[]; snap.forEach(doc=>{ rawDocs.push(doc.data()); });
-      const merged=mergeRemoteGeneric(state[key],rawDocs,d=>cloudSyncDoc(collections[key],d));
-      if(JSON.stringify(merged)!==JSON.stringify(state[key])){
-        applyingRemote=true;state[key]=merged;if(key==='debts')migrate();applyingRemote=false;
-        anyChanged=true;
-      }
-    }
-    if(anyChanged){ storageSet(KEY,JSON.stringify(state)); renderAll(); }
-    setSyncBadge('☁️ Synced','online');
-  }catch(e){}
-}
-function cloudSyncDoc(collectionName,d){ if(fbReady && db && !applyingRemote && d && d.id){ db.collection(collectionName).doc(d.id).set(d).catch(()=>{}); } }
-function cloudDeleteDoc(collectionName,id){ if(fbReady && db && !applyingRemote && id){ db.collection(collectionName).doc(id).set({id,_deleted:true,deletedAt:new Date().toISOString()}).catch(()=>{}); } }
-function cloudSyncPerson(d){ cloudSyncDoc('shopDebtsPeople',d); }
-function cloudDeletePerson(id){ cloudDeleteDoc('shopDebtsPeople',id); }
+// This app is fully offline: everything lives in this device's local storage only.
+// These are no-op stubs (kept so nothing elsewhere needs to change) — no data ever
+// leaves this device, and no internet connection is required for anything except
+// the optional Excel backup export/import.
+function cloudSyncDoc(){}
+function cloudDeleteDoc(){}
+function cloudSyncPerson(){}
+function cloudDeletePerson(){}
 let saveToastTimer=null;
 function flashSaved(){
   const el=document.getElementById('saveToast');
@@ -674,6 +566,7 @@ function recordSnapshotIfNeeded(){
 }
 
 async function init(){
+  history.replaceState({view:'dashboard',ov:null},'');
   try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw);
     state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[];
     migrate();
@@ -681,13 +574,11 @@ async function init(){
   document.getElementById('fDateGiven').value=today();
   recordSnapshotIfNeeded();
   renderAll();
-  initFirebaseSync();
   scheduleFlush();
 }
 function scheduleFlush(){
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden') forceFlush();
-    else if(document.visibilityState==='visible') refreshFromCloud();
   });
   window.addEventListener('blur',forceFlush);
   window.addEventListener('pagehide',forceFlush);
@@ -695,13 +586,41 @@ function scheduleFlush(){
 }
 
 let lastListView=null;
-function show(view){
-  if(['recv','pay','settled','dashboard','alpha'].includes(view)) lastListView=view;
+const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay'];
+function currentViewId(){ const el=document.querySelector('.view.active'); return el?el.id:'dashboard'; }
+function showUI(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById(view).classList.add('active');
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('navActive',b.dataset.view===view));
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function show(view){
+  if(['recv','pay','settled','dashboard','alpha'].includes(view)) lastListView=view;
+  showUI(view);
+  history.pushState({view,ov:null},'');
+}
+// Every overlay/modal opens by pushing a browser history entry. This means the
+// device/browser Back button closes the topmost modal (or returns to the previous
+// screen) instead of exiting the app — it only exits once you're back at the
+// Dashboard with nothing else open.
+function pushModalState(id){ history.pushState({view:currentViewId(),ov:id},''); }
+function hideOverlayId(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.style.display='none';
+  if(id==='inventoryOverlay') editingInventoryId=null;
+  if(id==='sellOverlay') sellItemId=null;
+  if(id==='payOverlay') payTargetId=null;
+  if(id==='itemOverlay'){ itemPersonId=null; itemEditId=null; }
+}
+window.addEventListener('popstate',function(e){
+  const st=e.state||{view:'dashboard',ov:null};
+  OVERLAY_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && el.style.display!=='none' && el.style.display!=='' && id!==st.ov) hideOverlayId(id);
+  });
+  if(st.ov){ const el=document.getElementById(st.ov); if(el) el.style.display='flex'; }
+  if(st.view && st.view!==currentViewId()) showUI(st.view);
+});
 
 function renderAll(){
   renderDashboard();
@@ -830,8 +749,9 @@ function openInventoryModal(id){
   document.getElementById('invQty').value=it?(it.qty||0):'';
   document.getElementById('invValue').value=it?(it.unitValue||0):'';
   document.getElementById('inventoryOverlay').style.display='flex';
+  pushModalState('inventoryOverlay');
 }
-function closeInventoryModal(){ document.getElementById('inventoryOverlay').style.display='none'; editingInventoryId=null; }
+function closeInventoryModal(){ history.back(); }
 async function confirmInventory(){
   const name=document.getElementById('invName').value.trim();
   const qty=Number(document.getElementById('invQty').value);
@@ -881,8 +801,9 @@ function openSellModal(id){
   toggleSellCustomerField();
   updateSellTotal();
   document.getElementById('sellOverlay').style.display='flex';
+  pushModalState('sellOverlay');
 }
-function closeSellModal(){ document.getElementById('sellOverlay').style.display='none'; sellItemId=null; }
+function closeSellModal(){ history.back(); }
 function toggleSellCustomerField(){
   const credit=document.querySelector('input[name=sellPayType]:checked').value==='credit';
   document.getElementById('sellCustomerWrap').style.display=credit?'block':'none';
@@ -952,8 +873,9 @@ function openCashModal(type){
   document.getElementById('cashNote').value='';
   document.getElementById('cashDate').value=today();
   document.getElementById('cashOverlay').style.display='flex';
+  pushModalState('cashOverlay');
 }
-function closeCashModal(){ document.getElementById('cashOverlay').style.display='none'; }
+function closeCashModal(){ history.back(); }
 async function confirmCash(){
   const amount=Number(document.getElementById('cashAmount').value);
   if(!amount||amount<=0){ await appAlert('Please enter a valid amount.'); return; }
@@ -1142,6 +1064,7 @@ function openAddItemModal(personId){
   document.getElementById('itemDateGiven').value=today();
   document.getElementById('itemDueDate').value='';
   document.getElementById('itemOverlay').style.display='flex';
+  pushModalState('itemOverlay');
 }
 function openEditItemModal(personId,itemId){
   const d=state.debts.find(x=>x.id===personId); if(!d) return;
@@ -1154,8 +1077,9 @@ function openEditItemModal(personId,itemId){
   document.getElementById('itemDateGiven').value=it.dateGiven||today();
   document.getElementById('itemDueDate').value=it.dueDate||'';
   document.getElementById('itemOverlay').style.display='flex';
+  pushModalState('itemOverlay');
 }
-function closeItemModal(){ document.getElementById('itemOverlay').style.display='none'; itemPersonId=null; itemEditId=null; }
+function closeItemModal(){ history.back(); }
 async function confirmItem(){
   const d=state.debts.find(x=>x.id===itemPersonId); if(!d) return;
   const description=document.getElementById('itemDesc').value.trim();
@@ -1218,8 +1142,9 @@ function openPayModal(id){
   document.getElementById('payAmount').value='';
   document.getElementById('payDate').value=today();
   document.getElementById('payOverlay').style.display='flex';
+  pushModalState('payOverlay');
 }
-function closePayModal(){ document.getElementById('payOverlay').style.display='none'; payTargetId=null; }
+function closePayModal(){ history.back(); }
 async function confirmPayment(){
   const d=state.debts.find(x=>x.id===payTargetId); if(!d) return;
   let amt=Number(document.getElementById('payAmount').value);
