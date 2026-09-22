@@ -30,11 +30,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro
 }
 body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(50px) saturate(160%);opacity:1;
   background:
-    radial-gradient(circle at 10% 6%, rgba(60,90,170,.55), transparent 32%),
-    radial-gradient(circle at 88% 4%, rgba(120,60,90,.4), transparent 30%),
-    radial-gradient(circle at 92% 60%, rgba(214,64,74,.28), transparent 34%),
-    radial-gradient(circle at 6% 72%, rgba(40,60,120,.3), transparent 32%),
-    linear-gradient(180deg,#dbe2f0,#eef1f6 42%,#f3ecec);
+    radial-gradient(circle at 10% 6%, rgba(20,90,200,.5), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(245,166,35,.35), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(10,60,160,.32), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(30,70,150,.3), transparent 32%),
+    linear-gradient(180deg,#dce9f9,#eef3fb 42%,#f6f2e6);
 }
 .app{max-width:900px;margin:auto;padding:12px 14px 40px;position:relative;z-index:1}
 .glass{background:var(--glass);border:1px solid var(--glassBorder);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.8);
@@ -45,7 +45,7 @@ body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;
 .glass>*{position:relative;z-index:1}
 header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:8px;z-index:20}
 .title{font-size:20px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:9px}
-.title img{width:32px;height:32px;border-radius:9px;display:block;box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.title img{width:36px;height:36px;border-radius:50%;display:block;box-shadow:0 3px 8px rgba(0,0,0,.2);object-fit:cover}
 .sub{font-size:11.5px;color:var(--text2);margin-top:2px;font-weight:500}
 nav{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
 nav button{border:1px solid var(--glassBorder);background:var(--glass);backdrop-filter:saturate(160%);
@@ -202,10 +202,8 @@ textarea{resize:vertical;min-height:56px}
     <div style="text-align:left">
       <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Description *</label>
       <textarea id="itemDesc" placeholder="e.g. Old debt from before Ramadan" style="margin-bottom:10px"></textarea>
-      <div class="payRow">
-        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN) *</label><input type="number" id="itemAmount" step="0.01" min="0"></div>
-        <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Extra Charge (opt.)</label><input type="number" id="itemExtra" step="0.01" min="0"></div>
-      </div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN) *</label>
+      <input type="number" id="itemAmount" step="0.01" min="0" style="margin-bottom:10px;width:100%">
       <div class="payRow">
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date Given</label><input type="date" id="itemDateGiven"></div>
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Due Date (opt.)</label><input type="date" id="itemDueDate"></div>
@@ -285,7 +283,7 @@ textarea{resize:vertical;min-height:56px}
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
-  <div><div class="title"><img src="icon-192.png" alt=""> Shop Debts</div><div class="sub">Who owes you, who you owe</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
+  <div><div class="title"><img src="logo-star.png" alt=""> Shop Debts</div><div class="sub">Who owes you, who you owe</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
   <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
 </header>
 <nav>
@@ -303,12 +301,8 @@ textarea{resize:vertical;min-height:56px}
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Debt Position</div><div class="value" id="dashNet">0 AFN</div><div class="hint">Receivables − Payables only (see Net Worth in Portfolio for full picture)</div></div></div>
-<div class="card glass"><span class="iconBadge red">⚠️</span><div class="cardText"><div class="label">Overdue</div><div class="value" id="dashOverdue">0</div></div></div>
-<div class="card glass"><span class="iconBadge orange">⏳</span><div class="cardText"><div class="label">Due in 7 Days</div><div class="value" id="dashDueSoon">0</div></div></div>
 <div class="card glass"><span class="iconBadge navy">📋</span><div class="cardText"><div class="label">Active Debts</div><div class="value" id="dashActive">0</div></div></div>
 </div>
-<div class="section glass"><h2>⚠️ Overdue</h2><div id="overdueList"></div></div>
-<div class="section glass"><h2>⏳ Due Soon (next 7 days)</h2><div id="dueSoonList"></div></div>
 <div class="section glass"><h2>🕘 Recently Added</h2><div id="recentList"></div></div>
 </section>
 
@@ -412,7 +406,6 @@ textarea{resize:vertical;min-height:56px}
 <div class="formGrid">
 <div class="full"><label>Description *</label><input type="text" id="fDesc" placeholder="e.g. Old debt from before Ramadan, or Soap + shampoo on credit"></div>
 <div><label>Amount (AFN) *</label><input type="number" id="fAmount" step="0.01" min="0" placeholder="0"></div>
-<div><label>Extra Charge / Interest (optional)</label><input type="number" id="fExtra" step="0.01" min="0" placeholder="0"></div>
 <div><label>Date Given</label><input type="date" id="fDateGiven"></div>
 <div><label>Due Date (optional)</label><input type="date" id="fDueDate"></div>
 </div>
@@ -543,10 +536,10 @@ function paidSoFar(d){ return (d.payments||[]).reduce((s,p)=>s+Number(p.amount||
 function remaining(d){ return Math.max(0, totalDue(d)-paidSoFar(d)); }
 function nextDueDate(d){ const dates=itemsOf(d).map(it=>it.dueDate).filter(Boolean).sort(); return dates.length?dates[0]:null; }
 function latestDateGiven(d){ const dates=itemsOf(d).map(it=>it.dateGiven).filter(Boolean).sort(); return dates.length?dates[dates.length-1]:null; }
-function isOverdue(d){ const dd=nextDueDate(d); return dd && !isSettled(d) && remaining(d)>0.004 && dd<today(); }
-function isDueSoon(d){ const dd=nextDueDate(d); if(!dd || isSettled(d) || remaining(d)<=0.004 || isOverdue(d)) return false; const diff=(new Date(dd)-new Date(today()))/86400000; return diff>=0 && diff<=7; }
-function daysOverdue(d){ const dd=nextDueDate(d); if(!dd) return 0; const a=new Date(dd),b=new Date(today()); return Math.round((b-a)/86400000); }
-function isSettled(d){ return d.settled || remaining(d)<=0.004; }
+function isOverdue(){ return false; }
+function isDueSoon(){ return false; }
+function daysOverdue(){ return 0; }
+function isSettled(d){ return d.settled===true || (d.settled!==false && remaining(d)<=0.004); }
 function recalcSettled(d){ if(remaining(d)<=0.004){ d.settled=true; d.settledAt=d.settledAt||new Date().toISOString(); } else { d.settled=false; d.settledAt=null; } }
 
 function cashBalance(){ return (state.cashLog||[]).reduce((s,c)=>s+(c.type==='in'?Number(c.amount||0):-Number(c.amount||0)),0); }
@@ -575,6 +568,27 @@ async function init(){
   recordSnapshotIfNeeded();
   renderAll();
   scheduleFlush();
+  scheduleAutoBackup();
+}
+const AUTO_BACKUP_KEY='shop_debts_lastAutoBackup';
+const AUTO_BACKUP_MS=24*60*60*1000;
+async function autoBackupIfDue(){
+  try{
+    const last=Number(await storageGet(AUTO_BACKUP_KEY))||0;
+    if(Date.now()-last < AUTO_BACKUP_MS) return;
+    if(!state.debts.length && !(state.inventory||[]).length && !(state.cashLog||[]).length) return; // nothing to back up yet
+    await exportBackupExcel(true);
+    storageSet(AUTO_BACKUP_KEY,String(Date.now()));
+  }catch(e){}
+}
+function scheduleAutoBackup(){
+  autoBackupIfDue();
+  // A web app can only run this while it's actually open, so we also check every
+  // time the app is brought back to the foreground (not just once at launch).
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') autoBackupIfDue();
+  });
+  setInterval(autoBackupIfDue, 60*60*1000); // also re-check hourly if the app stays open
 }
 function scheduleFlush(){
   document.addEventListener('visibilitychange',()=>{
@@ -904,17 +918,7 @@ function renderDashboard(){
   const netEl=document.getElementById('dashNet');
   netEl.textContent=(net<0?'-':'')+money(Math.abs(net))+' AFN';
   netEl.style.color=net<0?'var(--red)':'var(--green)';
-  const overdue=active.filter(isOverdue);
-  const dueSoon=active.filter(isDueSoon);
-  document.getElementById('dashOverdue').textContent=overdue.length;
-  document.getElementById('dashDueSoon').textContent=dueSoon.length;
   document.getElementById('dashActive').textContent=active.length;
-  document.getElementById('overdueList').innerHTML=overdue.length
-    ? overdue.sort((a,b)=>daysOverdue(b)-daysOverdue(a)).map(d=>safeCard(d)).join('')
-    : '<div class="empty">No overdue debts. 🎉</div>';
-  document.getElementById('dueSoonList').innerHTML=dueSoon.length
-    ? dueSoon.sort((a,b)=>(nextDueDate(a)||'').localeCompare(nextDueDate(b)||'')).map(d=>safeCard(d)).join('')
-    : '<div class="empty">Nothing due in the next 7 days.</div>';
   const recent=[...state.debts].sort((a,b)=>(latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'')).slice(0,5);
   document.getElementById('recentList').innerHTML=recent.length
     ? recent.map(d=>safeCard(d)).join('')
@@ -1005,7 +1009,6 @@ function openAddForm(){
   document.getElementById('fAddress').value='';
   document.getElementById('fDesc').value='';
   document.getElementById('fAmount').value='';
-  document.getElementById('fExtra').value='';
   document.getElementById('fDateGiven').value=today();
   document.getElementById('fDueDate').value='';
   document.querySelector('input[name=fDir][value=receivable]').checked=true;
@@ -1041,7 +1044,7 @@ async function saveDebtForm(){
     const amount=Number(document.getElementById('fAmount').value);
     if(!description){ await appAlert('Please enter a description for this debt.'); return; }
     if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
-    const extra=Number(document.getElementById('fExtra').value)||0;
+    const extra=0;
     const dateGiven=document.getElementById('fDateGiven').value||today();
     const dueDate=document.getElementById('fDueDate').value||null;
     d={id:uid(),name,phone,address,direction,category,
@@ -1060,7 +1063,6 @@ function openAddItemModal(personId){
   document.getElementById('itemTitle').textContent='➕ Add Debt';
   document.getElementById('itemDesc').value='';
   document.getElementById('itemAmount').value='';
-  document.getElementById('itemExtra').value='';
   document.getElementById('itemDateGiven').value=today();
   document.getElementById('itemDueDate').value='';
   document.getElementById('itemOverlay').style.display='flex';
@@ -1073,7 +1075,6 @@ function openEditItemModal(personId,itemId){
   document.getElementById('itemTitle').textContent='✏️ Edit Debt';
   document.getElementById('itemDesc').value=it.description||'';
   document.getElementById('itemAmount').value=it.amount||'';
-  document.getElementById('itemExtra').value=it.extra||'';
   document.getElementById('itemDateGiven').value=it.dateGiven||today();
   document.getElementById('itemDueDate').value=it.dueDate||'';
   document.getElementById('itemOverlay').style.display='flex';
@@ -1086,15 +1087,14 @@ async function confirmItem(){
   const amount=Number(document.getElementById('itemAmount').value);
   if(!description){ await appAlert('Please enter a description for this debt.'); return; }
   if(!amount || amount<=0){ await appAlert('Please enter a valid amount.'); return; }
-  const extra=Number(document.getElementById('itemExtra').value)||0;
   const dateGiven=document.getElementById('itemDateGiven').value||today();
   const dueDate=document.getElementById('itemDueDate').value||null;
   d.items=d.items||[];
   if(itemEditId){
     const it=d.items.find(x=>x.id===itemEditId);
-    if(it) Object.assign(it,{description,amount,extra,dateGiven,dueDate});
+    if(it) Object.assign(it,{description,amount,dateGiven,dueDate});
   } else {
-    d.items.push({id:uid(),description,amount,extra,dateGiven,dueDate});
+    d.items.push({id:uid(),description,amount,extra:0,dateGiven,dueDate});
   }
   recalcSettled(d);
   closeItemModal();
@@ -1257,10 +1257,10 @@ async function loadXLSX(){
     setTimeout(()=>{clearInterval(iv);res()},5000);
   });
 }
-async function exportBackupExcel(){
+async function exportBackupExcel(silent){
   try{
     await loadXLSX();
-    if(!window.XLSX){ await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
+    if(!window.XLSX){ if(!silent) await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
     const wb=XLSX.utils.book_new();
     const summaryRows=state.debts.map(d=>({
       ID:d.id,Name:d.name,Phone:d.phone||'',Address:d.address||'',
@@ -1290,7 +1290,7 @@ async function exportBackupExcel(){
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
     XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
-  }catch(err){ appAlert('Could not create the backup file: '+err.message); }
+  }catch(err){ if(!silent) appAlert('Could not create the backup file: '+err.message); }
 }
 async function handleRestoreFile(e){
   const f=e.target.files[0]; if(!f) return;
