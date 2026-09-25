@@ -99,6 +99,8 @@ button.primary:active{transform:scale(.95)}
 .debtAmt .rem.pay{color:var(--red)}
 .debtAmt .of{font-size:11px;color:var(--text2)}
 .debtMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text2);align-items:center}
+.lastPaid{color:#166b3a;font-weight:600}
+.lastPaid.noPay{color:#a52530}
 .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap}
 .badge.overdue{background:rgba(214,64,74,.14);color:#a52530}
 .badge.duesoon{background:rgba(201,121,26,.14);color:#8a5a13}
@@ -148,9 +150,18 @@ textarea{resize:vertical;min-height:56px}
   background:rgba(24,32,50,.9);color:#fff;font-size:12.5px;font-weight:600;padding:8px 16px;border-radius:999px;
   box-shadow:0 8px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s var(--ease),transform .25s var(--ease)}
 .saveToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.fab{position:fixed;right:18px;bottom:22px;z-index:15;border:none;background:var(--navy);color:#fff;width:56px;height:56px;
-  border-radius:50%;font-size:26px;box-shadow:0 10px 24px rgba(24,40,74,.4);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fab{position:fixed;right:18px;bottom:22px;z-index:25;border:none;background:var(--navy);color:#fff;width:56px;height:56px;
+  border-radius:50%;font-size:26px;box-shadow:0 10px 24px rgba(24,40,74,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:transform .2s var(--spring)}
 .fab:active{transform:scale(.92)}
+.fab.open{transform:rotate(45deg)}
+.fabMenu{position:fixed;right:18px;bottom:88px;z-index:24;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.fabMenu.hidden{display:none}
+.fabMiniBtn{border:none;background:#fff;color:var(--navy);padding:10px 16px;border-radius:999px;font-weight:700;font-size:13px;
+  box-shadow:0 8px 20px rgba(24,40,74,.28);cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.fabMiniBtn:active{transform:scale(.95)}
+.fabBackdrop{position:fixed;inset:0;z-index:23;background:rgba(10,20,40,.15);display:none}
+.fabBackdrop.show{display:block}
 .searchBar{display:flex;gap:8px;margin-bottom:10px}
 .searchBar input{flex:1}
 .chips{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
@@ -225,6 +236,8 @@ textarea{resize:vertical;min-height:56px}
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Quantity in Stock *</label><input type="number" id="invQty" step="1" min="0"></div>
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Value per Unit (AFN) *</label><input type="number" id="invValue" step="0.01" min="0"></div>
       </div>
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Low Stock Alert Below (optional)</label>
+      <input type="number" id="invMinQty" step="1" min="0" placeholder="e.g. 10" style="width:100%">
     </div>
     <div class="modalBtns">
       <button class="mbSecondary" onclick="closeInventoryModal()">Cancel</button>
@@ -271,6 +284,16 @@ textarea{resize:vertical;min-height:56px}
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN) *</label><input type="number" id="cashAmount" step="0.01" min="0"></div>
         <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label><input type="date" id="cashDate"></div>
       </div>
+      <div id="cashCategoryWrap" style="display:none">
+        <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Category</label>
+        <select id="cashCategory" style="width:100%;margin-bottom:10px;padding:9px;border-radius:10px;border:1px solid var(--sep);font-size:13px;font-family:inherit">
+          <option value="supplier">📦 Supplier Payment</option>
+          <option value="rent">🏠 Rent</option>
+          <option value="salary">👷 Salary/Wages</option>
+          <option value="personal">🏡 Personal Draw</option>
+          <option value="other">🔹 Other</option>
+        </select>
+      </div>
       <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Note (optional)</label>
       <input type="text" id="cashNote" placeholder="e.g. Daily sales, Rent payment" style="width:100%">
     </div>
@@ -280,11 +303,24 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 </div>
+<div id="searchOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:400px;text-align:left">
+    <div style="font-weight:700;font-size:15px;margin-bottom:10px">🔍 Search Everything</div>
+    <input type="text" id="globalSearchInput" placeholder="Customer name, phone, product, or cash note…" style="width:100%;margin-bottom:10px" oninput="runGlobalSearch()">
+    <div id="globalSearchResults" style="max-height:50vh;overflow-y:auto"></div>
+    <div class="modalBtns">
+      <button class="mbSecondary" onclick="closeSearchModal()">Close</button>
+    </div>
+  </div>
+</div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
   <div><div class="title"><img src="logo-star.png" alt=""> Shop Debts</div><div class="sub">Who owes you, who you owe</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
-  <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button type="button" class="secondaryBtn" style="padding:11px 13px;font-size:15px" onclick="openSearchModal()" aria-label="Search">🔍</button>
+    <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
+  </div>
 </header>
 <nav>
 <button type="button" class="navActive" data-view="dashboard" onclick="show('dashboard')"><span class="iconBadge navy">🏠</span>Dashboard</button>
@@ -297,6 +333,10 @@ textarea{resize:vertical;min-height:56px}
 </nav>
 
 <section id="dashboard" class="view active">
+<div id="backupBanner" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:14px;background:rgba(201,121,26,.14);border:1px solid rgba(201,121,26,.35);color:#8a5a13;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <span id="backupBannerText">⚠️ Backup is overdue</span>
+  <button type="button" class="mbPrimary" style="padding:7px 12px;font-size:12px" onclick="exportBackupExcel()">Backup Now</button>
+</div>
 <div class="cards">
 <div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
 <div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
@@ -432,7 +472,13 @@ textarea{resize:vertical;min-height:56px}
 </section>
 
 </div>
-<button type="button" class="fab" onclick="openAddForm()">+</button>
+<div class="fabBackdrop" id="fabBackdrop" onclick="closeQuickAdd()"></div>
+<div class="fabMenu hidden" id="fabMenu">
+  <button type="button" class="fabMiniBtn" onclick="quickAddAction('debt')">➕ New Debt</button>
+  <button type="button" class="fabMiniBtn" onclick="quickAddAction('sell')">💰 Sell Product</button>
+  <button type="button" class="fabMiniBtn" onclick="quickAddAction('cashin')">💵 Cash In</button>
+</div>
+<button type="button" class="fab" id="fabBtn" onclick="toggleQuickAdd()">+</button>
 <script>
 function appAlert(msg){
   return new Promise(resolve=>{
@@ -536,6 +582,14 @@ function paidSoFar(d){ return (d.payments||[]).reduce((s,p)=>s+Number(p.amount||
 function remaining(d){ return Math.max(0, totalDue(d)-paidSoFar(d)); }
 function nextDueDate(d){ const dates=itemsOf(d).map(it=>it.dueDate).filter(Boolean).sort(); return dates.length?dates[0]:null; }
 function latestDateGiven(d){ const dates=itemsOf(d).map(it=>it.dateGiven).filter(Boolean).sort(); return dates.length?dates[dates.length-1]:null; }
+function lastPaymentDate(d){ const dates=(d.payments||[]).map(p=>p.date).filter(Boolean).sort(); return dates.length?dates[dates.length-1]:null; }
+function daysAgoLabel(dateStr){
+  if(!dateStr) return null;
+  const diff=Math.round((new Date(today())-new Date(dateStr))/86400000);
+  if(diff<=0) return 'today';
+  if(diff===1) return '1 day ago';
+  return diff+' days ago';
+}
 function isOverdue(){ return false; }
 function isDueSoon(){ return false; }
 function daysOverdue(){ return 0; }
@@ -578,7 +632,7 @@ async function autoBackupIfDue(){
     if(Date.now()-last < AUTO_BACKUP_MS) return;
     if(!state.debts.length && !(state.inventory||[]).length && !(state.cashLog||[]).length) return; // nothing to back up yet
     await exportBackupExcel(true);
-    storageSet(AUTO_BACKUP_KEY,String(Date.now()));
+    updateBackupBanner();
   }catch(e){}
 }
 function scheduleAutoBackup(){
@@ -600,7 +654,7 @@ function scheduleFlush(){
 }
 
 let lastListView=null;
-const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay'];
+const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay','searchOverlay'];
 function currentViewId(){ const el=document.querySelector('.view.active'); return el?el.id:'dashboard'; }
 function showUI(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -643,6 +697,21 @@ function renderAll(){
   renderSettled();
   renderAlphaList();
   renderPortfolio();
+  updateBackupBanner();
+}
+async function updateBackupBanner(){
+  const banner=document.getElementById('backupBanner'); if(!banner) return;
+  if(!state.debts.length && !(state.inventory||[]).length && !(state.cashLog||[]).length){ banner.style.display='none'; return; }
+  const last=Number(await storageGet(AUTO_BACKUP_KEY))||0;
+  const hrs=(Date.now()-last)/3600000;
+  if(!last || hrs>24){
+    document.getElementById('backupBannerText').textContent=!last
+      ? '⚠️ No backup has been made yet'
+      : `⚠️ Backup is overdue — last one was ${Math.floor(hrs/24)} day(s) ago`;
+    banner.style.display='flex';
+  } else {
+    banner.style.display='none';
+  }
 }
 function renderAlphaList(){
   const el=document.getElementById('alphaList'); if(!el) return;
@@ -738,10 +807,12 @@ function renderInventoryList(){
   const el=document.getElementById('inventoryList'); if(!el) return;
   const items=[...(state.inventory||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
   if(!items.length){ el.innerHTML='<div class="empty">No products yet — add your stock to track its value.</div>'; return; }
-  el.innerHTML=items.map(it=>`
+  el.innerHTML=items.map(it=>{
+    const low=it.minQty>0 && Number(it.qty||0)<=Number(it.minQty);
+    return `
     <div class="debtCard glass" style="margin-bottom:8px;padding:12px 14px">
       <div class="debtTop">
-        <div style="min-width:0"><div style="font-weight:700;font-size:13.5px">${escapeHtml(it.name||'Product')}</div>
+        <div style="min-width:0"><div style="font-weight:700;font-size:13.5px">${escapeHtml(it.name||'Product')} ${low?'<span class="badge overdue">🟠 Low Stock</span>':''}</div>
           <div class="small">${money(it.unitValue||0)} AFN each</div></div>
         <div class="debtAmt"><div class="rem" style="font-size:15px">${money((Number(it.qty)||0)*(Number(it.unitValue)||0))} AFN</div><div class="of">${it.qty||0} in stock</div></div>
       </div>
@@ -752,7 +823,8 @@ function renderInventoryList(){
         <button type="button" class="secondaryBtn" onclick="openInventoryModal('${it.id}')">✏️ Edit</button>
         <button type="button" class="dangerBtn" onclick="deleteInventoryItem('${it.id}')">🗑 Remove</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 let editingInventoryId=null;
 function openInventoryModal(id){
@@ -762,6 +834,7 @@ function openInventoryModal(id){
   document.getElementById('invName').value=it?(it.name||''):'';
   document.getElementById('invQty').value=it?(it.qty||0):'';
   document.getElementById('invValue').value=it?(it.unitValue||0):'';
+  document.getElementById('invMinQty').value=it&&it.minQty?it.minQty:'';
   document.getElementById('inventoryOverlay').style.display='flex';
   pushModalState('inventoryOverlay');
 }
@@ -770,6 +843,7 @@ async function confirmInventory(){
   const name=document.getElementById('invName').value.trim();
   const qty=Number(document.getElementById('invQty').value);
   const unitValue=Number(document.getElementById('invValue').value);
+  const minQty=Number(document.getElementById('invMinQty').value)||0;
   if(!name){ await appAlert('Please enter a product name.'); return; }
   if(isNaN(qty)||qty<0){ await appAlert('Please enter a valid quantity.'); return; }
   if(isNaN(unitValue)||unitValue<0){ await appAlert('Please enter a valid value per unit.'); return; }
@@ -777,9 +851,9 @@ async function confirmInventory(){
   state.inventory=state.inventory||[];
   if(editingInventoryId){
     it=state.inventory.find(x=>x.id===editingInventoryId);
-    if(it) Object.assign(it,{name,qty,unitValue});
+    if(it) Object.assign(it,{name,qty,unitValue,minQty});
   } else {
-    it={id:uid(),name,qty,unitValue};
+    it={id:uid(),name,qty,unitValue,minQty};
     state.inventory.push(it);
   }
   storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopInventory',it); flashSaved();
@@ -866,18 +940,22 @@ async function confirmSell(){
   closeSellModal(); renderAll();
 }
 
+const CASH_CAT_LABELS={supplier:'📦 Supplier',rent:'🏠 Rent',salary:'👷 Salary',personal:'🏡 Personal',other:'🔹 Other'};
 function renderCashLogList(){
   const el=document.getElementById('cashLogList'); if(!el) return;
   const rows=[...(state.cashLog||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,25);
   if(!rows.length){ el.innerHTML='<div class="empty">No cash transactions recorded yet.</div>'; return; }
-  el.innerHTML=rows.map(c=>`
+  el.innerHTML=rows.map(c=>{
+    const catLabel=c.category&&CASH_CAT_LABELS[c.category]?` <span class="badge short">${CASH_CAT_LABELS[c.category]}</span>`:'';
+    return `
     <div class="payHistItem">
-      <span>${c.date} — ${escapeHtml(c.note||(c.type==='in'?'Cash in':'Cash out'))}</span>
+      <span>${c.date} — ${escapeHtml(c.note||(c.type==='in'?'Cash in':'Cash out'))}${catLabel}</span>
       <span style="display:flex;align-items:center;gap:8px">
         <b style="color:${c.type==='in'?'#1e9e5a':'#d6404a'}">${c.type==='in'?'+':'-'}${money(c.amount)} AFN</b>
         <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteCashEntry('${c.id}')">🗑</button>
       </span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 let cashType='in';
 function openCashModal(type){
@@ -886,6 +964,8 @@ function openCashModal(type){
   document.getElementById('cashAmount').value='';
   document.getElementById('cashNote').value='';
   document.getElementById('cashDate').value=today();
+  document.getElementById('cashCategoryWrap').style.display=type==='out'?'block':'none';
+  document.getElementById('cashCategory').value='supplier';
   document.getElementById('cashOverlay').style.display='flex';
   pushModalState('cashOverlay');
 }
@@ -895,7 +975,8 @@ async function confirmCash(){
   if(!amount||amount<=0){ await appAlert('Please enter a valid amount.'); return; }
   const note=document.getElementById('cashNote').value.trim();
   const date=document.getElementById('cashDate').value||today();
-  const entry={id:uid(),date,type:cashType,amount,note};
+  const category=cashType==='out'?document.getElementById('cashCategory').value:null;
+  const entry={id:uid(),date,type:cashType,amount,note,category};
   state.cashLog=state.cashLog||[]; state.cashLog.push(entry);
   storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopCashLog',entry); flashSaved();
   closeCashModal(); renderAll();
@@ -966,6 +1047,8 @@ function debtCardHtml(d,settledView){
   const phone=d.phone?`<div class="debtPhone">${escapeHtml(d.phone)}</div>`:'';
   const remClass=d.direction==='payable'?'pay':'recv';
   const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
+  const lastPaid=lastPaymentDate(d);
+  const lastPaidSpan=!isSettled(d)&&lastPaid?`<span class="lastPaid">💵 Last paid: ${daysAgoLabel(lastPaid)}</span>`:(!isSettled(d)&&paid<=0?`<span class="lastPaid noPay">No payments yet</span>`:'');
   let actions;
   if(settledView){
     actions=`<div class="debtActions">
@@ -992,6 +1075,7 @@ function debtCardHtml(d,settledView){
       <span>${items.length} debt${items.length===1?'':'s'}</span>
       <span>Given: ${dateGiven||'—'}</span>
       ${dueDate?`<span>Due: ${dueDate}</span>`:''}
+      ${lastPaidSpan}
     </div>
     ${descList}
     ${actions}
@@ -1000,6 +1084,79 @@ function debtCardHtml(d,settledView){
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 let editingId=null;
+function toggleQuickAdd(){
+  const menu=document.getElementById('fabMenu'),btn=document.getElementById('fabBtn'),bg=document.getElementById('fabBackdrop');
+  const opening=menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',!opening);
+  btn.classList.toggle('open',opening);
+  bg.classList.toggle('show',opening);
+}
+function closeQuickAdd(){
+  document.getElementById('fabMenu').classList.add('hidden');
+  document.getElementById('fabBtn').classList.remove('open');
+  document.getElementById('fabBackdrop').classList.remove('show');
+}
+async function quickAddAction(action){
+  closeQuickAdd();
+  if(action==='debt'){ openAddForm(); return; }
+  if(action==='cashin'){ openCashModal('in'); return; }
+  if(action==='sell'){
+    const items=state.inventory||[];
+    if(!items.length){ await appAlert('Add a product to your Inventory first, then you can sell it from here.'); show('portfolio'); return; }
+    if(items.length===1){ show('portfolio'); openSellModal(items[0].id); return; }
+    show('portfolio');
+    document.getElementById('portfolio').scrollIntoView({behavior:'smooth'});
+  }
+}
+function openSearchModal(){
+  document.getElementById('globalSearchInput').value='';
+  document.getElementById('globalSearchResults').innerHTML='<div class="empty">Start typing to search customers, products, and cash notes.</div>';
+  document.getElementById('searchOverlay').style.display='flex';
+  pushModalState('searchOverlay');
+  setTimeout(()=>document.getElementById('globalSearchInput').focus(),50);
+}
+function closeSearchModal(){ history.back(); }
+function runGlobalSearch(){
+  const q=document.getElementById('globalSearchInput').value.trim().toLowerCase();
+  const resEl=document.getElementById('globalSearchResults');
+  if(!q){ resEl.innerHTML='<div class="empty">Start typing to search customers, products, and cash notes.</div>'; return; }
+  let html='';
+  // Customers
+  const customerHits=state.debts.filter(d=>
+    (d.name||'').toLowerCase().includes(q) ||
+    (d.phone||'').toLowerCase().includes(q) ||
+    itemsOf(d).some(it=>(it.description||'').toLowerCase().includes(q))
+  );
+  if(customerHits.length){
+    html+='<div class="small" style="font-weight:700;margin:8px 0 4px">👤 Customers</div>';
+    html+=customerHits.slice(0,15).map(d=>`
+      <div class="payHistItem" style="cursor:pointer" onclick="closeSearchModal();setTimeout(()=>openStatement('${d.id}'),150)">
+        <span>${escapeHtml(d.name)} ${d.phone?'· '+escapeHtml(d.phone):''}</span>
+        <b style="color:${d.direction==='payable'?'#d6404a':'#1e9e5a'}">${money(remaining(d))} AFN</b>
+      </div>`).join('');
+  }
+  // Inventory
+  const invHits=(state.inventory||[]).filter(it=>(it.name||'').toLowerCase().includes(q));
+  if(invHits.length){
+    html+='<div class="small" style="font-weight:700;margin:10px 0 4px">📦 Products</div>';
+    html+=invHits.slice(0,15).map(it=>`
+      <div class="payHistItem" style="cursor:pointer" onclick="closeSearchModal();setTimeout(()=>{show('portfolio');openSellModal('${it.id}')},150)">
+        <span>${escapeHtml(it.name)} · ${it.qty||0} in stock</span>
+        <b>${money(it.unitValue||0)} AFN</b>
+      </div>`).join('');
+  }
+  // Cash log
+  const cashHits=(state.cashLog||[]).filter(c=>(c.note||'').toLowerCase().includes(q));
+  if(cashHits.length){
+    html+='<div class="small" style="font-weight:700;margin:10px 0 4px">💵 Cash Notes</div>';
+    html+=cashHits.slice(0,15).map(c=>`
+      <div class="payHistItem" style="cursor:pointer" onclick="closeSearchModal();setTimeout(()=>show('portfolio'),150)">
+        <span>${c.date} — ${escapeHtml(c.note||'')}</span>
+        <b style="color:${c.type==='in'?'#1e9e5a':'#d6404a'}">${c.type==='in'?'+':'-'}${money(c.amount)} AFN</b>
+      </div>`).join('');
+  }
+  resEl.innerHTML=html||'<div class="empty">No matches found.</div>';
+}
 function openAddForm(){
   editingId=null;
   document.getElementById('formTitle').textContent='➕ Add Person / Debt';
@@ -1283,13 +1440,15 @@ async function exportBackupExcel(silent){
     const invRows=(state.inventory||[]).map(it=>({ID:it.id,Name:it.name,Quantity:it.qty||0,'Value per Unit':it.unitValue||0,'Total Value':(Number(it.qty)||0)*(Number(it.unitValue)||0)}));
     const ws4=XLSX.utils.json_to_sheet(invRows.length?invRows:[{ID:'',Name:'',Quantity:'','Value per Unit':'','Total Value':''}]);
     XLSX.utils.book_append_sheet(wb,ws4,'Inventory');
-    const cashRows=(state.cashLog||[]).map(c=>({ID:c.id,Date:c.date,Type:c.type==='in'?'Cash In':'Cash Out',Amount:c.amount,Note:c.note||''}));
-    const ws5=XLSX.utils.json_to_sheet(cashRows.length?cashRows:[{ID:'',Date:'',Type:'',Amount:'',Note:''}]);
+    const cashRows=(state.cashLog||[]).map(c=>({ID:c.id,Date:c.date,Type:c.type==='in'?'Cash In':'Cash Out',Category:c.category?CASH_CAT_LABELS[c.category]||c.category:'',Amount:c.amount,Note:c.note||''}));
+    const ws5=XLSX.utils.json_to_sheet(cashRows.length?cashRows:[{ID:'',Date:'',Type:'',Category:'',Amount:'',Note:''}]);
     XLSX.utils.book_append_sheet(wb,ws5,'CashLog');
     const snapRows=(state.snapshots||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>({Date:s.date,Cash:s.cash,'Inventory Value':s.inventoryValue,Receivables:s.receivables,Payables:s.payables,'Net Worth':s.netWorth}));
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
     XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
+    storageSet(AUTO_BACKUP_KEY,String(Date.now()));
+    updateBackupBanner();
   }catch(err){ if(!silent) appAlert('Could not create the backup file: '+err.message); }
 }
 async function handleRestoreFile(e){
