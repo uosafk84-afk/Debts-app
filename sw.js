@@ -1,14 +1,20 @@
-const CACHE = 'shop-debts-v5';
+const CACHE = 'shop-debts-v6';
+const CORE = './index.html';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
-      .catch(()=>{})
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then(async c => {
+      // Cache the app shell itself first and treat it as must-succeed —
+      // this is the one file offline opening truly depends on.
+      try { await c.add(CORE); } catch(err) {}
+      // Everything else is best-effort: if one file 404s or is missing on
+      // the host, that must NOT wipe out the rest of the cache (this is
+      // exactly what cache.addAll's all-or-nothing behavior used to do).
+      await Promise.all(ASSETS.map(url => c.add(url).catch(()=>{})));
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -24,13 +30,20 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   // Page loads/navigations: always guarantee the app opens offline by falling
-  // back to the cached index.html no matter what URL was actually requested
-  // (this is what makes "open with no internet" work reliably).
+  // back to the cached app shell no matter what exact URL was requested.
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
-        .then(res => { caches.open(CACHE).then(c => c.put('./index.html', res.clone())); return res; })
-        .catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => { c.put(CORE, clone); c.put(e.request, res.clone()); });
+          return res;
+        })
+        .catch(() =>
+          caches.match(e.request)
+            .then(r => r || caches.match(CORE))
+            .then(r => r || caches.match('./'))
+        )
     );
     return;
   }
