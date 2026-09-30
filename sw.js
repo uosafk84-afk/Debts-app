@@ -1,4 +1,4 @@
-const CACHE = 'shop-debts-v6';
+const CACHE = 'shop-debts-v7';
 const CORE = './index.html';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png'
@@ -29,21 +29,26 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
-  // Page loads/navigations: always guarantee the app opens offline by falling
-  // back to the cached app shell no matter what exact URL was requested.
+  // Page loads/navigations: serve the cached app shell INSTANTLY (cache-first)
+  // instead of waiting on the network. This is what makes the app open fast
+  // and reliably every time, even on a slow or flaky connection — no waiting
+  // to find out the network is bad before falling back. We still refresh the
+  // cached copy quietly in the background whenever a connection is available,
+  // so you get the latest version next time you open it.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
-        .then(res => {
+      caches.match(CORE).then(cached => {
+        const network = fetch(e.request).then(res => {
           const clone = res.clone();
           caches.open(CACHE).then(c => { c.put(CORE, clone); c.put(e.request, res.clone()); });
           return res;
-        })
-        .catch(() =>
-          caches.match(e.request)
-            .then(r => r || caches.match(CORE))
-            .then(r => r || caches.match('./'))
-        )
+        }).catch(() => undefined);
+        if (cached) {
+          network; // refresh in background, ignore the result here
+          return cached;
+        }
+        return network.then(res => res || caches.match('./'));
+      })
     );
     return;
   }
