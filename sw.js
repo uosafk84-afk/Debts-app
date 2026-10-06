@@ -1,7 +1,8 @@
-const CACHE = 'shop-debts-v7';
+const CACHE = 'shop-debts-v8';
 const CORE = './index.html';
 const ASSETS = [
-  './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png'
+  './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', e => {

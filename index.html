@@ -481,12 +481,40 @@ textarea{resize:vertical;min-height:56px}
 <h2>📤 Export Backup</h2>
 <p class="small">Creates an Excel file with every debt, its status, and full payment history. Keep it somewhere safe — you can restore from it later on this or another device.</p>
 <button type="button" class="primary" onclick="exportBackupExcel()">Export Backup (.xlsx)</button>
+<p class="small" style="margin-top:10px">Every backup — this one and the automatic 24-hour one — is saved as a file in your phone's <b>Downloads</b> folder. That's separate storage on your phone, so it's <b>not</b> erased when you clear Chrome's browsing data. Open your phone's Files app → Downloads any time to find or move your backups.</p>
+<button type="button" class="fileLbl" id="chooseBackupFolderBtn" style="margin-top:8px;border:none;cursor:pointer" onclick="chooseBackupFolder()">📁 Also Save Backups To a Folder I Choose</button>
+<p class="small" id="backupFolderStatus" style="margin-top:6px"></p>
 </div>
 <div class="section glass">
 <h2>📥 Restore Backup</h2>
 <p class="small">Restores debts from a backup file made by this app's Export button. Restored entries are added alongside your current data (nothing existing is deleted).</p>
 <label class="fileLbl" for="restoreFile">Choose Backup File…</label>
 <input type="file" id="restoreFile" accept=".xlsx,.xls" style="display:none" onchange="handleRestoreFile(event)">
+</div>
+<div class="section glass">
+<h2>☁️ Cloud Backup (Optional)</h2>
+<p class="small">The app still works fully offline — this is an extra safety net. When turned on, every change is quietly copied in the background to your own private Firebase database, so your records survive even if this phone is lost, broken, or reset. Your local data is never removed or replaced by this. Access is locked to your own private login — no one else can read or write this data, even with your Firebase config.</p>
+<p class="small" id="cloudStatus" style="font-weight:700;margin-top:6px">Cloud backup is off.</p>
+<p class="small" style="margin-top:10px">1) Paste your Firebase project config below (from Firebase Console → Project settings → General → Your apps → SDK setup and configuration):</p>
+<textarea id="cloudCfgInput" rows="4" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:11.5px;border-radius:10px;padding:8px" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", ... }'></textarea>
+<p class="small" style="margin-top:10px">2) Set a private email + password for your own backup account (this is separate from your Google/Gmail login — make up any email-shaped ID and password, just remember them):</p>
+<input type="email" id="cloudEmailInput" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px;margin-bottom:6px" placeholder="your-email@example.com">
+<input type="password" id="cloudPassInput" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px" placeholder="Password (6+ characters)">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<button type="button" class="primary" onclick="createCloudAccount()">Create Account & Turn On</button>
+<button type="button" class="fileLbl" style="border:none;cursor:pointer" onclick="signInCloudAccount()">Sign In (new/other phone)</button>
+<button type="button" class="fileLbl" style="border:none;cursor:pointer" onclick="disableCloudBackup()">Turn Off</button>
+</div>
+<p class="small" style="margin-top:10px">On a new phone: paste the same Firebase config, enter the same email + password, and tap "Sign In" — it will offer to pull your data down.</p>
+<p class="small" style="margin-top:10px">One-time setup in your Firebase project: open <b>Authentication → Sign-in method</b> and enable "Email/Password", and set your <b>Firestore Rules</b> to:</p>
+<pre style="font-size:10.5px;background:rgba(0,0,0,.04);border-radius:8px;padding:8px;overflow-x:auto;white-space:pre">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}</pre>
 </div>
 </section>
 
@@ -549,14 +577,182 @@ document.addEventListener('focusout',e=>{
     setTimeout(()=>{ if(!document.activeElement||(document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')) renderAll(); },0);
   }
 });
-// This app is fully offline: everything lives in this device's local storage only.
-// These are no-op stubs (kept so nothing elsewhere needs to change) — no data ever
-// leaves this device, and no internet connection is required for anything except
-// the optional Excel backup export/import.
-function cloudSyncDoc(){}
-function cloudDeleteDoc(){}
-function cloudSyncPerson(){}
-function cloudDeletePerson(){}
+// This app still works fully offline — local storage is always the primary copy
+// of your data and nothing here is required for the app to open or work. These
+// functions are an OPTIONAL background safety-net backup to a cloud database
+// (Firebase/Firestore) that you set up and sign into yourself. When it's off
+// (the default), they do nothing at all. When it's on, each change is quietly
+// mirrored to your own private cloud database in the background, in addition
+// to being saved locally as always. Access is locked to YOUR Firebase account
+// (email+password) — the security rules below mean no one else can read or
+// write your data, even if they somehow got your Firebase config.
+let cloudEnabled=false, cloudCfg=null, cloudUid='', cloudDb=null, cloudAuthReady=false;
+const CLOUD_CFG_KEY='shop_debts_cloudCfg';
+const CLOUD_ON_KEY='shop_debts_cloudOn';
+const CLOUD_LAST_SYNC_KEY='shop_debts_cloudLastSync';
+const CLOUD_EMAIL_KEY='shop_debts_cloudEmail';
+
+async function loadFirebaseSDK(){
+  if(window.firebase && window.firebase.firestore && window.firebase.auth) return true;
+  try{
+    for(const src of [
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'
+    ]){
+      await new Promise((resolve,reject)=>{
+        const s=document.createElement('script');
+        s.src=src; s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
+      });
+    }
+    return !!(window.firebase && window.firebase.firestore && window.firebase.auth);
+  }catch(e){ return false; }
+}
+function parseFirebaseConfigText(txt){
+  try{
+    const m=(txt||'').match(/\{[\s\S]*\}/);
+    if(!m) return null;
+    const obj=new Function('return ('+m[0]+')')();
+    if(obj && obj.apiKey && obj.projectId) return obj;
+    return null;
+  }catch(e){ return null; }
+}
+async function initCloudSdk(){
+  if(!cloudCfg) return false;
+  const ok=await loadFirebaseSDK();
+  if(!ok) return false;
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(cloudCfg);
+    cloudDb=firebase.firestore();
+    return true;
+  }catch(e){ cloudDb=null; return false; }
+}
+function shopColl(name){ return cloudDb.collection('users').doc(cloudUid).collection(name); }
+function cloudSafe(obj){
+  // Firestore rejects `undefined` field values, so strip them the cheap way —
+  // this is also a safe deep-clone, which .set() needs anyway.
+  try{ return JSON.parse(JSON.stringify(obj)); }catch(e){ return obj; }
+}
+function cloudReady(){ return cloudEnabled && cloudDb && cloudUid; }
+function cloudSyncDoc(coll,obj){
+  if(!obj || obj.id===undefined || obj.id===null) return;
+  if(!cloudReady()) return;
+  shopColl(coll).doc(String(obj.id)).set(cloudSafe(obj),{merge:true})
+    .then(()=>{ storageSet(CLOUD_LAST_SYNC_KEY,String(Date.now())); updateCloudStatus(); })
+    .catch(()=>{});
+}
+function cloudDeleteDoc(coll,id){
+  if(id===undefined || id===null) return;
+  if(!cloudReady()) return;
+  shopColl(coll).doc(String(id)).delete().catch(()=>{});
+}
+function cloudSyncPerson(d){ cloudSyncDoc('shopPeople',d); }
+function cloudDeletePerson(id){ cloudDeleteDoc('shopPeople',id); }
+
+async function pushAllToCloud(){
+  if(!cloudReady()) return;
+  for(const d of state.debts) await shopColl('shopPeople').doc(String(d.id)).set(cloudSafe(d),{merge:true}).catch(()=>{});
+  for(const it of (state.inventory||[])) await shopColl('shopInventory').doc(String(it.id)).set(cloudSafe(it),{merge:true}).catch(()=>{});
+  for(const c of (state.cashLog||[])) await shopColl('shopCashLog').doc(String(c.id)).set(cloudSafe(c),{merge:true}).catch(()=>{});
+  for(const s of (state.snapshots||[])) await shopColl('shopSnapshots').doc(String(s.date)).set(cloudSafe(s),{merge:true}).catch(()=>{});
+  storageSet(CLOUD_LAST_SYNC_KEY,String(Date.now()));
+}
+function readCloudForm(){
+  const cfgText=document.getElementById('cloudCfgInput').value.trim();
+  const email=document.getElementById('cloudEmailInput').value.trim();
+  const pass=document.getElementById('cloudPassInput').value;
+  return {cfgText,email,pass};
+}
+async function createCloudAccount(){
+  const {cfgText,email,pass}=readCloudForm();
+  const cfg=parseFirebaseConfigText(cfgText);
+  if(!cfg){ await appAlert('Could not read that Firebase config. Paste the whole config object exactly as copied from your Firebase project settings (Project settings → General → Your apps → SDK setup and configuration).'); return; }
+  if(!email || !pass || pass.length<6){ await appAlert('Enter an email and a password (at least 6 characters) — this is YOUR private login, only you will know it.'); return; }
+  cloudCfg=cfg; cloudDb=null;
+  const sdkOk=await initCloudSdk();
+  if(!sdkOk){ await appAlert('Could not connect to Firebase. Check the config and your internet connection.'); return; }
+  try{
+    const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+    cloudUid=cred.user.uid;
+  }catch(e){ await appAlert('Could not create the account: '+(e&&e.message?e.message:e)); return; }
+  await finishCloudSignIn(cfg,email);
+}
+async function signInCloudAccount(){
+  const {cfgText,email,pass}=readCloudForm();
+  const cfg=parseFirebaseConfigText(cfgText);
+  if(!cfg){ await appAlert('Paste your Firebase config first.'); return; }
+  if(!email || !pass){ await appAlert('Enter your email and password.'); return; }
+  cloudCfg=cfg; cloudDb=null;
+  const sdkOk=await initCloudSdk();
+  if(!sdkOk){ await appAlert('Could not connect to Firebase. Check the config and your internet connection.'); return; }
+  try{
+    const cred=await firebase.auth().signInWithEmailAndPassword(email,pass);
+    cloudUid=cred.user.uid;
+  }catch(e){ await appAlert('Sign-in failed: '+(e&&e.message?e.message:e)); return; }
+  const ok1=await appConfirm('Signed in. Do you want to REPLACE all debts, inventory, cash log, and history on this device with the backed-up version from your account? (Choose "No" to just turn on syncing from here on, keeping what\'s on this device.)');
+  if(ok1){
+    await pullAllFromCloud();
+  }
+  await finishCloudSignIn(cfg,email);
+}
+async function finishCloudSignIn(cfg,email){
+  cloudEnabled=true;
+  storageSet(CLOUD_CFG_KEY,JSON.stringify(cfg));
+  storageSet(CLOUD_ON_KEY,'1');
+  storageSet(CLOUD_EMAIL_KEY,email);
+  updateCloudStatus();
+  await appAlert('Cloud backup is on and signed in as '+email+'. Copying your current data up now — this may take a moment.');
+  await pushAllToCloud();
+  updateCloudStatus();
+  await appAlert('Done! Your data is private to your account and will keep syncing automatically in the background.');
+}
+async function pullAllFromCloud(){
+  try{
+    const [peopleSnap,invSnap,cashSnap,snapSnap]=await Promise.all([
+      shopColl('shopPeople').get(), shopColl('shopInventory').get(), shopColl('shopCashLog').get(), shopColl('shopSnapshots').get()
+    ]);
+    if(peopleSnap.empty && invSnap.empty && cashSnap.empty){ await appAlert('No backup found yet on this account — that\'s expected if this is the first device you\'ve used it on.'); return; }
+    state.debts=peopleSnap.docs.map(d=>d.data());
+    state.inventory=invSnap.docs.map(d=>d.data());
+    state.cashLog=cashSnap.docs.map(d=>d.data());
+    state.snapshots=snapSnap.docs.map(d=>d.data());
+    storageSet(KEY,JSON.stringify(state));
+    renderAll();
+  }catch(e){ await appAlert('Could not pull your backup down: '+(e&&e.message?e.message:e)); }
+}
+function disableCloudBackup(){
+  cloudEnabled=false;
+  storageSet(CLOUD_ON_KEY,'0');
+  try{ if(window.firebase && firebase.auth) firebase.auth().signOut(); }catch(e){}
+  updateCloudStatus();
+}
+function updateCloudStatus(){
+  const el=document.getElementById('cloudStatus'); if(!el) return;
+  if(!cloudEnabled){ el.textContent='Cloud backup is off — your data stays only on this device (plus whatever you export manually).'; return; }
+  storageGet(CLOUD_LAST_SYNC_KEY).then(v=>{
+    const last=Number(v)||0;
+    el.textContent=last?('✅ Cloud backup is on, private to your account — last synced '+daysAgoLabel(new Date(last).toISOString().slice(0,10))+'.'):'✅ Cloud backup is on, private to your account — syncing in the background.';
+  });
+}
+async function restoreCloudSettingsOnLoad(){
+  try{
+    const cfgRaw=await storageGet(CLOUD_CFG_KEY);
+    const on=await storageGet(CLOUD_ON_KEY);
+    const email=await storageGet(CLOUD_EMAIL_KEY);
+    const cfgEl=document.getElementById('cloudCfgInput'); if(cfgEl && cfgRaw) cfgEl.value=cfgRaw;
+    const emailEl=document.getElementById('cloudEmailInput'); if(emailEl && email) emailEl.value=email;
+    if(!cfgRaw || on!=='1') { updateCloudStatus(); return; }
+    cloudCfg=JSON.parse(cfgRaw);
+    const sdkOk=await initCloudSdk();
+    if(!sdkOk){ updateCloudStatus(); return; }
+    // Firebase Auth persists its own session (separately from our localStorage
+    // flag), so on a normal reopen this restores silently with no re-login.
+    firebase.auth().onAuthStateChanged(user=>{
+      if(user){ cloudUid=user.uid; cloudEnabled=true; } else { cloudEnabled=false; }
+      updateCloudStatus();
+    });
+  }catch(e){ updateCloudStatus(); }
+}
 let saveToastTimer=null;
 function flashSaved(){
   const el=document.getElementById('saveToast');
@@ -642,6 +838,8 @@ async function init(){
   renderAll();
   scheduleFlush();
   scheduleAutoBackup();
+  restoreBackupFolderHandle();
+  restoreCloudSettingsOnLoad();
 }
 const AUTO_BACKUP_KEY='shop_debts_lastAutoBackup';
 const AUTO_BACKUP_MS=24*60*60*1000;
@@ -1426,6 +1624,72 @@ async function copyStatement(){
   }
 }
 
+let backupDirHandle=null;
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open('shop_debts_fs',1);
+    req.onupgradeneeded=()=>{ try{ req.result.createObjectStore('handles'); }catch(e){} };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbGetHandle(){
+  try{
+    const db=await idbOpen();
+    return await new Promise(resolve=>{
+      const tx=db.transaction('handles','readonly');
+      const g=tx.objectStore('handles').get('backupDir');
+      g.onsuccess=()=>resolve(g.result||null);
+      g.onerror=()=>resolve(null);
+    });
+  }catch(e){ return null; }
+}
+async function idbSetHandle(handle){
+  try{
+    const db=await idbOpen();
+    await new Promise(resolve=>{
+      const tx=db.transaction('handles','readwrite');
+      tx.objectStore('handles').put(handle,'backupDir');
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>resolve();
+    });
+  }catch(e){}
+}
+function updateBackupFolderStatus(){
+  const el=document.getElementById('backupFolderStatus'); if(!el) return;
+  if(!('showDirectoryPicker' in window)){
+    el.textContent='Not supported in this browser — backups still save safely to Downloads.';
+  }else if(backupDirHandle){
+    el.textContent='✅ Also saving every backup into your chosen folder.';
+  }else{
+    el.textContent='';
+  }
+}
+async function restoreBackupFolderHandle(){
+  if(!('showDirectoryPicker' in window)) return;
+  try{
+    const handle=await idbGetHandle();
+    if(!handle) return;
+    const perm=await handle.queryPermission({mode:'readwrite'});
+    if(perm==='granted') backupDirHandle=handle;
+  }catch(e){}
+  updateBackupFolderStatus();
+}
+async function chooseBackupFolder(){
+  if(!('showDirectoryPicker' in window)){
+    await appAlert('Your phone\'s browser doesn\'t support picking a folder directly here. Don\'t worry — every backup (including the automatic 24-hour one) already saves as a file in your phone\'s Downloads folder, which is NOT affected when you clear Chrome\'s browsing data. Open your phone\'s Files app → Downloads any time to find them.');
+    return;
+  }
+  try{
+    const handle=await window.showDirectoryPicker({id:'shopDebtsBackup',mode:'readwrite'});
+    const perm=await handle.requestPermission({mode:'readwrite'});
+    if(perm!=='granted'){ await appAlert('Permission wasn\'t granted, so backups will keep going to Downloads only.'); return; }
+    backupDirHandle=handle;
+    await idbSetHandle(handle);
+    updateBackupFolderStatus();
+    await appAlert('Saved! From now on, every backup (including the automatic 24-hour one) will also be saved into that folder.');
+  }catch(err){ /* user cancelled the picker - do nothing */ }
+}
 async function loadXLSX(){
   if(window.XLSX) return;
   await new Promise(res=>{
@@ -1465,7 +1729,20 @@ async function exportBackupExcel(silent){
     const snapRows=(state.snapshots||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>({Date:s.date,Cash:s.cash,'Inventory Value':s.inventoryValue,Receivables:s.receivables,Payables:s.payables,'Net Worth':s.netWorth}));
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
-    XLSX.writeFile(wb,`Shop_Debts_Backup_${today()}.xlsx`);
+    const fname=`Shop_Debts_Backup_${today()}.xlsx`;
+    XLSX.writeFile(wb,fname);
+    if(backupDirHandle){
+      try{
+        const outBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+        const perm=await backupDirHandle.queryPermission({mode:'readwrite'});
+        if(perm==='granted'){
+          const fh=await backupDirHandle.getFileHandle(fname,{create:true});
+          const writable=await fh.createWritable();
+          await writable.write(outBuf);
+          await writable.close();
+        }
+      }catch(e){ /* the Downloads copy already saved, so this is non-fatal */ }
+    }
     storageSet(AUTO_BACKUP_KEY,String(Date.now()));
     updateBackupBanner();
   }catch(err){ if(!silent) appAlert('Could not create the backup file: '+err.message); }
@@ -1586,6 +1863,14 @@ async function handleRestoreFile(e){
 }
 
 if(document.readyState==='complete'){ init(); } else { window.addEventListener('load',init); }
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    // Android can otherwise wait up to 24h before checking for a new version.
+    // Ask right away (and every hour the app stays open) so fixes/updates take
+    // effect the next time you open the app instead of sitting unused.
+    reg.update().catch(()=>{});
+    setInterval(()=>{ reg.update().catch(()=>{}); },60*60*1000);
+  }).catch(()=>{});
+});}
 </script>
 </body></html>
