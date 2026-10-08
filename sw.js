@@ -1,8 +1,11 @@
-const CACHE = 'shop-debts-v8';
+const CACHE = 'shop-debts-v12';
 const CORE = './index.html';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'
 ];
 
 self.addEventListener('install', e => {
