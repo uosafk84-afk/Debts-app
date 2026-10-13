@@ -3,6 +3,20 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shop Debts</title>
+<script>
+// Applied synchronously, before the page paints, so switching screens never
+// shows a flash of the wrong theme/colors first.
+(function(){
+  try{
+    var mode=localStorage.getItem('shop_debts_themeMode')||'auto';
+    var palette=localStorage.getItem('shop_debts_palette')||'star';
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var resolved = mode==='auto' ? (dark?'dark':'light') : mode;
+    document.documentElement.setAttribute('data-theme',resolved);
+    if(palette && palette!=='star') document.documentElement.setAttribute('data-palette',palette);
+  }catch(e){}
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#18284a">
 <link rel="icon" href="icon-192.png">
@@ -23,21 +37,78 @@
   --glow-blue:0 0 0 1px rgba(90,160,255,.25),0 0 22px rgba(60,140,255,.28);
   --glow-gold:0 0 0 1px rgba(255,180,70,.3),0 0 20px rgba(255,160,40,.3);
   --ease:cubic-bezier(.22,1,.36,1); --spring:cubic-bezier(.2,.8,.2,1);
+  --bgRadials:
+    radial-gradient(circle at 10% 6%, rgba(20,90,200,.5), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(245,166,35,.35), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(10,60,160,.32), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(30,70,150,.3), transparent 32%);
+  --bgBase:linear-gradient(180deg,#dce9f9,#eef3fb 42%,#f6f2e6);
+}
+/* ---- Dark mode: applied when data-theme="dark" (explicit, or resolved from
+   "auto" + the phone's system setting by JS). Only the core surface/text
+   variables change — accent colors below (palettes) layer on top of this. */
+:root[data-theme="dark"]{
+  --bg:#10131c; --surface:#1a1d27;
+  --glass:rgba(255,255,255,.055); --glassBorder:rgba(255,255,255,.14);
+  --text:#eef0f4; --text2:#a9adb9;
+  --sep:rgba(255,255,255,.14);
+  --shadow:0 14px 34px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.4);
+  --bgBase:linear-gradient(180deg,#0b0d14,#12141c 42%,#15151b);
+}
+/* ---- Color palettes: pick the accent (--navy/--blue, used for headers, nav,
+   buttons, glows) and the background's decorative gradient hues. "star" is
+   the default and needs no override. */
+:root[data-palette="emerald"]{
+  --navy:#0f3d2e; --blue:#12995a;
+  --bgRadials:
+    radial-gradient(circle at 10% 6%, rgba(20,160,110,.45), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(245,200,35,.3), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(10,120,80,.3), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(20,110,80,.28), transparent 32%);
+}
+:root[data-palette="crimson"]{
+  --navy:#3a1020; --blue:#c23a4b;
+  --bgRadials:
+    radial-gradient(circle at 10% 6%, rgba(200,40,70,.4), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(245,166,35,.3), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(160,20,50,.3), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(150,30,60,.28), transparent 32%);
+}
+:root[data-palette="violet"]{
+  --navy:#2a1750; --blue:#7c3aed;
+  --bgRadials:
+    radial-gradient(circle at 10% 6%, rgba(124,58,237,.42), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(236,72,153,.3), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(90,40,180,.3), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(100,50,170,.28), transparent 32%);
+}
+:root[data-palette="slate"]{
+  --navy:#2b2f36; --blue:#4b5563;
+  --bgRadials:
+    radial-gradient(circle at 10% 6%, rgba(90,100,115,.4), transparent 32%),
+    radial-gradient(circle at 90% 4%, rgba(160,165,175,.3), transparent 30%),
+    radial-gradient(circle at 92% 62%, rgba(70,78,90,.3), transparent 34%),
+    radial-gradient(circle at 6% 74%, rgba(80,88,100,.28), transparent 32%);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;
   color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   background:var(--bg);background-attachment:fixed;overflow-x:hidden;position:relative;
+  transition:background-color .3s var(--ease),color .3s var(--ease);
 }
 body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(50px) saturate(160%);opacity:1;
-  background:
-    radial-gradient(circle at 10% 6%, rgba(20,90,200,.5), transparent 32%),
-    radial-gradient(circle at 90% 4%, rgba(245,166,35,.35), transparent 30%),
-    radial-gradient(circle at 92% 62%, rgba(10,60,160,.32), transparent 34%),
-    radial-gradient(circle at 6% 74%, rgba(30,70,150,.3), transparent 32%),
-    linear-gradient(180deg,#dce9f9,#eef3fb 42%,#f6f2e6);
+  transition:opacity .3s var(--ease);
+  background:var(--bgRadials),var(--bgBase);
 }
+/* Custom background photo the user picked from their own files. Hidden by
+   default; JS shows it and hides body::before when one is set. A tinted
+   scrim sits on top so text stays readable over any photo. */
+body.hasCustomBg::before{opacity:0}
+#customBgLayer{position:fixed;inset:0;z-index:0;pointer-events:none;background-size:cover;background-position:center;display:none}
+body.hasCustomBg #customBgLayer{display:block}
+#customBgLayer::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.6)}
+:root[data-theme="dark"] #customBgLayer::after{background:rgba(8,10,16,.68)}
 .app{max-width:900px;margin:auto;padding:12px 14px 40px;position:relative;z-index:1}
 .glass{background:var(--glass);border:1px solid var(--glassBorder);box-shadow:var(--shadow),var(--glow-blue),inset 0 1px 0 rgba(255,255,255,.8);
   border-radius:20px;backdrop-filter:saturate(160%);-webkit-backdrop-filter:saturate(160%);
@@ -59,6 +130,17 @@ nav button{border:1px solid var(--glassBorder);background:var(--glass);backdrop-
 nav button:active{transform:scale(.95)}
 nav button.navActive{background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;border-color:transparent;
   box-shadow:0 6px 18px rgba(24,40,74,.4),0 0 16px rgba(90,160,255,.5),inset 0 1px 0 rgba(255,255,255,.4)}
+.segmented{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.segmented button{flex:1 1 auto;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text2);
+  padding:10px 12px;border-radius:14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;
+  transition:background-color .2s var(--ease),color .2s var(--ease),transform .12s var(--spring)}
+.segmented button:active{transform:scale(.95)}
+.segmented button.active{background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;border-color:transparent}
+.paletteRow{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.paletteSwatch{width:44px;height:44px;border-radius:50%;border:2px solid var(--glassBorder);cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);position:relative;transition:transform .12s var(--spring)}
+.paletteSwatch:active{transform:scale(.9)}
+.paletteSwatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--navy),0 2px 8px rgba(0,0,0,.3)}
 button{font-family:inherit}
 button.primary{border:1px solid rgba(24,40,74,.5);background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;padding:11px 18px;border-radius:16px;font-weight:700;
   font-size:13.5px;cursor:pointer;transition:transform .12s var(--spring),box-shadow .2s;box-shadow:0 6px 16px rgba(24,40,74,.3),0 0 18px rgba(90,160,255,.4),inset 0 1px 0 rgba(255,255,255,.2);white-space:nowrap}
@@ -169,6 +251,10 @@ textarea{resize:vertical;min-height:56px}
   box-shadow:0 8px 20px rgba(24,40,74,.28);cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .fabMiniBtn:active{transform:scale(.95)}
 .fabBackdrop{position:fixed;inset:0;z-index:23;background:rgba(10,20,40,.15);display:none}
+.cornerBtn{position:fixed;left:14px;bottom:22px;z-index:25;border:none;background:var(--glass);border:1px solid var(--glassBorder);
+  color:var(--text2);width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(24,40,74,.18);opacity:.8;transition:transform .15s var(--spring),opacity .15s}
+.cornerBtn:active{transform:scale(.9);opacity:1}
 .fabBackdrop.show{display:block}
 .searchBar{display:flex;gap:8px;margin-bottom:10px}
 .searchBar input{flex:1}
@@ -207,6 +293,7 @@ textarea{resize:vertical;min-height:56px}
 </style>
 </head>
 <body>
+<div id="customBgLayer"></div>
 <div id="modalOverlay" class="modalOverlay" style="display:none">
   <div class="modalBox glass">
     <div id="modalMsg" class="modalMsg"></div>
@@ -346,9 +433,11 @@ textarea{resize:vertical;min-height:56px}
 <button type="button" data-view="recv" onclick="show('recv')"><span class="iconBadge green">🟢</span>Owed to You</button>
 <button type="button" data-view="pay" onclick="show('pay')"><span class="iconBadge red">🔴</span>You Owe</button>
 <button type="button" data-view="alpha" onclick="show('alpha')"><span class="iconBadge navy">🔤</span>All Customers</button>
+<button type="button" data-view="inventory" onclick="show('inventory')"><span class="iconBadge navy">📦</span>Inventory</button>
 <button type="button" data-view="portfolio" onclick="show('portfolio')"><span class="iconBadge orange">📊</span>Portfolio</button>
 <button type="button" data-view="settled" onclick="show('settled')"><span class="iconBadge navy">✅</span>Settled</button>
 <button type="button" data-view="backup" onclick="show('backup')"><span class="iconBadge orange">💾</span>Backup</button>
+<button type="button" data-view="settings" onclick="show('settings')"><span class="iconBadge navy">⚙️</span>Settings</button>
 </nav>
 
 <section id="dashboard" class="view active">
@@ -412,18 +501,20 @@ textarea{resize:vertical;min-height:56px}
 <div class="section glass"><h2>🧩 What Makes Up Your Worth</h2><div id="pfCompChart"></div></div>
 
 <div class="section glass">
-<h2>📦 Inventory</h2>
-<div id="inventoryList"></div>
-<button type="button" class="secondaryBtn" style="width:100%" onclick="openInventoryModal()">➕ Add Product</button>
-</div>
-
-<div class="section glass">
 <h2>💵 Cash Ledger</h2>
 <div class="debtActions" style="margin-bottom:10px">
 <button type="button" class="secondaryBtn" onclick="openCashModal('in')">➕ Cash In</button>
 <button type="button" class="dangerBtn" onclick="openCashModal('out')">➖ Cash Out</button>
 </div>
 <div id="cashLogList"></div>
+</div>
+</section>
+
+<section id="inventory" class="view">
+<div class="section glass">
+<h2>📦 Inventory</h2>
+<div id="inventoryList"></div>
+<button type="button" class="secondaryBtn" style="width:100%" onclick="openInventoryModal()">➕ Add Product</button>
 </div>
 </section>
 
@@ -436,6 +527,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="formActions">
 <button type="button" class="secondaryBtn" style="flex:1;padding:11px" onclick="show(lastListView||'dashboard')">Back</button>
 <button type="button" class="primary" style="flex:1" onclick="copyStatement()">📋 Copy Statement</button>
+<button type="button" class="primary" style="flex:1" onclick="shareStatementImage()">📤 Share as Picture</button>
 </div>
 </div>
 </section>
@@ -500,6 +592,37 @@ textarea{resize:vertical;min-height:56px}
 </div>
 </section>
 
+<section id="settings" class="view">
+<div class="section glass">
+<h2>🌗 Appearance</h2>
+<p class="small">Choose how the app looks. Changes apply instantly and are remembered on this phone.</p>
+<div class="small" style="font-weight:700;margin-top:12px">Light / Dark</div>
+<div class="segmented" id="themeModeRow">
+<button type="button" data-mode="light" onclick="setThemeMode('light')">☀️ Light</button>
+<button type="button" data-mode="dark" onclick="setThemeMode('dark')">🌙 Dark</button>
+<button type="button" data-mode="auto" onclick="setThemeMode('auto')">🔄 Auto</button>
+</div>
+<div class="small" style="font-weight:700;margin-top:16px">Color Theme</div>
+<div class="paletteRow" id="paletteRow">
+<button type="button" class="paletteSwatch" data-palette="star" onclick="setPalette('star')" style="background:linear-gradient(135deg,#2d4a8a,#18284a)" title="Star (default)"></button>
+<button type="button" class="paletteSwatch" data-palette="emerald" onclick="setPalette('emerald')" style="background:linear-gradient(135deg,#12995a,#0f3d2e)" title="Emerald"></button>
+<button type="button" class="paletteSwatch" data-palette="crimson" onclick="setPalette('crimson')" style="background:linear-gradient(135deg,#c23a4b,#3a1020)" title="Crimson"></button>
+<button type="button" class="paletteSwatch" data-palette="violet" onclick="setPalette('violet')" style="background:linear-gradient(135deg,#7c3aed,#2a1750)" title="Violet"></button>
+<button type="button" class="paletteSwatch" data-palette="slate" onclick="setPalette('slate')" style="background:linear-gradient(135deg,#4b5563,#2b2f36)" title="Slate"></button>
+</div>
+</div>
+<div class="section glass">
+<h2>🖼️ Background Picture</h2>
+<p class="small">Pick a photo from your phone's own files to use as the app's background. It's stored only on this phone, never uploaded anywhere.</p>
+<div id="bgPreviewWrap" style="display:none;margin:10px 0">
+<img id="bgPreviewImg" style="width:100%;max-height:160px;object-fit:cover;border-radius:12px;display:block">
+</div>
+<label class="fileLbl" for="bgImageInput">📁 Choose Picture From Files…</label>
+<input type="file" id="bgImageInput" accept="image/*" style="display:none" onchange="handleBgImageChange(event)">
+<button type="button" class="fileLbl" id="removeBgBtn" style="border:none;cursor:pointer;margin-top:8px;display:none" onclick="removeBgImage()">🗑️ Remove Background Picture</button>
+</div>
+</section>
+
 </div>
 <div class="fabBackdrop" id="fabBackdrop" onclick="closeQuickAdd()"></div>
 <div class="fabMenu hidden" id="fabMenu">
@@ -508,6 +631,24 @@ textarea{resize:vertical;min-height:56px}
   <button type="button" class="fabMiniBtn" onclick="quickAddAction('cashin')">💵 Cash In</button>
 </div>
 <button type="button" class="fab" id="fabBtn" onclick="toggleQuickAdd()">+</button>
+<button type="button" class="cornerBtn" id="sulphonicCornerBtn" title="Sulphonic Acid" onclick="openSulphonicModal()">🧪</button>
+
+<div id="sulphonicOverlay" class="modalOverlay" style="display:none">
+  <div class="modalBox glass" style="max-width:380px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">🧪 Sulphonic Acid Usage</div>
+    <div class="small" style="margin-bottom:10px">A small separate log — just tracks how much you've used, doesn't touch the rest of the app's numbers.</div>
+    <div class="statRow" style="margin-bottom:10px"><span>Total Used</span><b id="sulphonicTotal">0</b></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="number" id="sulphonicAmount" placeholder="Amount used" style="flex:1;border-radius:10px;padding:8px" inputmode="decimal">
+      <input type="text" id="sulphonicNote" placeholder="Note (optional)" style="flex:1;border-radius:10px;padding:8px">
+    </div>
+    <button type="button" class="primary" style="width:100%" onclick="addSulphonicEntry()">➕ Add</button>
+    <div id="sulphonicList" style="margin-top:12px;max-height:240px;overflow-y:auto"></div>
+    <div class="formActions" style="margin-top:12px">
+      <button type="button" class="secondaryBtn" style="flex:1" onclick="closeSulphonicModal()">Close</button>
+    </div>
+  </div>
+</div>
 <script>
 function appAlert(msg){
   return new Promise(resolve=>{
@@ -822,7 +963,7 @@ function flashSaved(){
 function save(changedPerson){storageSet(KEY,JSON.stringify(state));if(changedPerson)cloudSyncPerson(changedPerson);flashSaved()}
 function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); }catch(e){} }
 
-let state={debts:[],inventory:[],cashLog:[],snapshots:[]};
+let state={debts:[],inventory:[],cashLog:[],snapshots:[],sulphonicLog:[]};
 function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
 function migrate(){
@@ -888,7 +1029,7 @@ function recordSnapshotIfNeeded(){
 async function init(){
   history.replaceState({view:'dashboard',ov:null},'');
   try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw);
-    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[];
+    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[]; state.sulphonicLog=parsed.sulphonicLog||[];
     migrate();
   } }catch(e){}
   document.getElementById('fDateGiven').value=today();
@@ -898,6 +1039,7 @@ async function init(){
   scheduleAutoBackup();
   restoreBackupFolderHandle();
   restoreCloudSettingsOnLoad();
+  initAppearance();
 }
 const AUTO_BACKUP_KEY='shop_debts_lastAutoBackup';
 const AUTO_BACKUP_MS=12*60*60*1000;
@@ -929,7 +1071,7 @@ function scheduleFlush(){
 }
 
 let lastListView=null;
-const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay','searchOverlay'];
+const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay','searchOverlay','sulphonicOverlay'];
 function currentViewId(){ const el=document.querySelector('.view.active'); return el?el.id:'dashboard'; }
 function showUI(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -973,6 +1115,7 @@ function renderAll(){
   renderAlphaList();
   renderPortfolio();
   updateBackupBanner();
+  renderSulphonicLog();
 }
 async function updateBackupBanner(){
   const banner=document.getElementById('backupBanner'); if(!banner) return;
@@ -1263,6 +1406,52 @@ async function deleteCashEntry(id){
   state.cashLog=(state.cashLog||[]).filter(x=>x.id!==id);
   storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopCashLog',id); flashSaved();
   renderAll();
+}
+// Sulphonic Acid usage log — a tiny, isolated tracker tucked in a corner button.
+// It intentionally does not touch cash/inventory/debt totals anywhere else in the app.
+function openSulphonicModal(){
+  document.getElementById('sulphonicAmount').value='';
+  document.getElementById('sulphonicNote').value='';
+  renderSulphonicLog();
+  document.getElementById('sulphonicOverlay').style.display='flex';
+  pushModalState('sulphonicOverlay');
+}
+function closeSulphonicModal(){ history.back(); }
+async function addSulphonicEntry(){
+  const amount=Number(document.getElementById('sulphonicAmount').value);
+  if(!amount||amount<=0){ await appAlert('Please enter a valid amount used.'); return; }
+  const note=document.getElementById('sulphonicNote').value.trim();
+  const entry={id:uid(),date:today(),amount,note};
+  state.sulphonicLog=state.sulphonicLog||[]; state.sulphonicLog.push(entry);
+  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopSulphonicLog',entry); flashSaved();
+  document.getElementById('sulphonicAmount').value='';
+  document.getElementById('sulphonicNote').value='';
+  renderSulphonicLog();
+}
+async function deleteSulphonicEntry(id){
+  const en=(state.sulphonicLog||[]).find(x=>x.id===id); if(!en) return;
+  const ok=await appConfirm(`Remove this entry of ${money(en.amount)} used on ${en.date}?`);
+  if(!ok) return;
+  state.sulphonicLog=(state.sulphonicLog||[]).filter(x=>x.id!==id);
+  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopSulphonicLog',id); flashSaved();
+  renderSulphonicLog();
+}
+function renderSulphonicLog(){
+  const totalEl=document.getElementById('sulphonicTotal');
+  const listEl=document.getElementById('sulphonicList');
+  if(!totalEl||!listEl) return;
+  const log=(state.sulphonicLog||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||0);
+  const total=log.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  totalEl.textContent=money(total);
+  if(!log.length){ listEl.innerHTML='<div class="small" style="opacity:.7;padding:8px 0">No usage logged yet.</div>'; return; }
+  listEl.innerHTML=log.map(e=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--sep)">
+      <span>
+        <b>${money(e.amount)}</b> <span class="small" style="opacity:.75">${e.date}</span>
+        ${e.note?`<div class="small" style="opacity:.7">${e.note}</div>`:''}
+      </span>
+      <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteSulphonicEntry('${e.id}')">🗑</button>
+    </div>`).join('');
 }
 function renderDashboard(){
   const active=state.debts.filter(d=>!isSettled(d));
@@ -1682,35 +1871,251 @@ async function copyStatement(){
   }
 }
 
+// Builds a clean, shareable "sticker" image for one customer's debt — name,
+// each debt's date, the remaining balance, and the total — and shares it
+// straight to WhatsApp/etc via the share sheet (falls back to a download).
+async function shareStatementImage(){
+  const d=state.debts.find(x=>x.id===statementId); if(!d) return;
+  const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
+  const W=720, pad=36;
+  const rowH=54;
+  const headerH=200;
+  const footerH=150;
+  const H=headerH + Math.max(items.length,1)*rowH + footerH;
+  const canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Background
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#18284a'); bg.addColorStop(1,'#223663');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // Header card
+  ctx.fillStyle='#ffffff';
+  roundRect(ctx,pad,pad,W-pad*2,headerH-pad*1.4,18); ctx.fill();
+  ctx.fillStyle='#18284a';
+  ctx.font='700 26px system-ui,sans-serif';
+  ctx.fillText('🛍️ Shop Debts — Statement',pad+22,pad+42);
+  ctx.font='700 23px system-ui,sans-serif';
+  ctx.fillStyle='#18284a';
+  ctx.fillText(d.name,pad+22,pad+82);
+  ctx.font='400 15px system-ui,sans-serif';
+  ctx.fillStyle='#55607a';
+  let subY=pad+108;
+  ctx.fillText(d.direction==='payable'?'You owe them':'They owe you', pad+22, subY);
+  if(d.phone){ subY+=22; ctx.fillText('Phone: '+d.phone, pad+22, subY); }
+
+  // Items list
+  let y=headerH+18;
+  ctx.font='600 16px system-ui,sans-serif';
+  items.forEach((it,i)=>{
+    const rowY=y+i*rowH;
+    ctx.fillStyle = i%2===0 ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.03)';
+    roundRect(ctx,pad,rowY,W-pad*2,rowH-10,10); ctx.fill();
+    ctx.fillStyle='#ffffff';
+    ctx.font='700 15px system-ui,sans-serif';
+    ctx.fillText(it.description||'Debt', pad+18, rowY+22);
+    ctx.font='400 13px system-ui,sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.75)';
+    ctx.fillText('Date: '+(it.dateGiven||'—'), pad+18, rowY+40);
+    ctx.font='700 16px system-ui,sans-serif';
+    ctx.fillStyle='#ffffff';
+    const amtTxt=money(Number(it.amount||0)+Number(it.extra||0))+' AFN';
+    const amtW=ctx.measureText(amtTxt).width;
+    ctx.fillText(amtTxt, W-pad-18-amtW, rowY+30);
+  });
+  if(!items.length){
+    ctx.fillStyle='rgba(255,255,255,.75)';
+    ctx.font='400 15px system-ui,sans-serif';
+    ctx.fillText('No debts listed.', pad+18, y+24);
+  }
+
+  // Footer totals card
+  const fy=headerH+Math.max(items.length,1)*rowH+14;
+  ctx.fillStyle='#ffffff';
+  roundRect(ctx,pad,fy,W-pad*2,footerH-26,18); ctx.fill();
+  const drawStat=(label,value,yy,big)=>{
+    ctx.fillStyle='#55607a'; ctx.font='400 14px system-ui,sans-serif';
+    ctx.fillText(label,pad+22,yy);
+    ctx.fillStyle='#18284a'; ctx.font=(big?'800 24px':'700 16px')+' system-ui,sans-serif';
+    const txt=money(value)+' AFN';
+    const w=ctx.measureText(txt).width;
+    ctx.fillText(txt, W-pad-22-w, yy+(big?2:0));
+  };
+  drawStat('Total', totalDue(d), fy+34, false);
+  drawStat('Money Remaining', remaining(d), fy+78, true);
+
+  function roundRect(c,x,x2,w,h,r){
+    c.beginPath();
+    c.moveTo(x+r,x2);
+    c.arcTo(x+w,x2,x+w,x2+h,r);
+    c.arcTo(x+w,x2+h,x,x2+h,r);
+    c.arcTo(x,x2+h,x,x2,r);
+    c.arcTo(x,x2,x+w,x2,r);
+    c.closePath();
+  }
+
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  if(!blob) return;
+  const fileName=`statement-${(d.name||'customer').replace(/[^a-z0-9]+/gi,'-')}.png`;
+  const file=new File([blob],fileName,{type:'image/png'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file],title:'Shop Debts — '+d.name,text:`Statement for ${d.name} — ${money(remaining(d))} AFN remaining.`});
+      return;
+    }catch(e){ if(e && e.name==='AbortError') return; }
+  }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  appAlert('Image saved — you can attach it from your downloads to send it.');
+}
+
 let backupDirHandle=null;
 function idbOpen(){
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open('shop_debts_fs',1);
-    req.onupgradeneeded=()=>{ try{ req.result.createObjectStore('handles'); }catch(e){} };
+    const req=indexedDB.open('shop_debts_fs',2);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      try{ if(!db.objectStoreNames.contains('handles')) db.createObjectStore('handles'); }catch(e){}
+      try{ if(!db.objectStoreNames.contains('images')) db.createObjectStore('images'); }catch(e){}
+    };
     req.onsuccess=()=>resolve(req.result);
     req.onerror=()=>reject(req.error);
   });
 }
-async function idbGetHandle(){
+async function idbGet(store,key){
   try{
     const db=await idbOpen();
     return await new Promise(resolve=>{
-      const tx=db.transaction('handles','readonly');
-      const g=tx.objectStore('handles').get('backupDir');
+      const tx=db.transaction(store,'readonly');
+      const g=tx.objectStore(store).get(key);
       g.onsuccess=()=>resolve(g.result||null);
       g.onerror=()=>resolve(null);
     });
   }catch(e){ return null; }
 }
-async function idbSetHandle(handle){
+async function idbSet(store,key,value){
   try{
     const db=await idbOpen();
     await new Promise(resolve=>{
-      const tx=db.transaction('handles','readwrite');
-      tx.objectStore('handles').put(handle,'backupDir');
+      const tx=db.transaction(store,'readwrite');
+      tx.objectStore(store).put(value,key);
       tx.oncomplete=()=>resolve();
       tx.onerror=()=>resolve();
     });
+  }catch(e){}
+}
+async function idbDelete(store,key){
+  try{
+    const db=await idbOpen();
+    await new Promise(resolve=>{
+      const tx=db.transaction(store,'readwrite');
+      tx.objectStore(store).delete(key);
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>resolve();
+    });
+  }catch(e){}
+}
+async function idbGetHandle(){ return idbGet('handles','backupDir'); }
+async function idbSetHandle(handle){ return idbSet('handles','backupDir',handle); }
+
+// ---- Appearance: light/dark/auto, color palettes, custom background photo --
+const THEME_MODE_KEY='shop_debts_themeMode';
+const PALETTE_KEY='shop_debts_palette';
+const BG_IMAGE_STORE='images', BG_IMAGE_KEY='customBg';
+function resolveTheme(mode){
+  if(mode==='auto') return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  return mode;
+}
+function applyThemeMode(mode){
+  document.documentElement.setAttribute('data-theme',resolveTheme(mode));
+  document.querySelectorAll('#themeModeRow button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+}
+function setThemeMode(mode){
+  applyThemeMode(mode);
+  storageSet(THEME_MODE_KEY,mode);
+}
+function applyPalette(palette){
+  if(palette && palette!=='star') document.documentElement.setAttribute('data-palette',palette);
+  else document.documentElement.removeAttribute('data-palette');
+  document.querySelectorAll('.paletteSwatch').forEach(b=>b.classList.toggle('active',b.dataset.palette===palette));
+}
+function setPalette(palette){
+  applyPalette(palette);
+  storageSet(PALETTE_KEY,palette);
+}
+function applyBgImage(dataUrl){
+  const layer=document.getElementById('customBgLayer');
+  if(layer) layer.style.backgroundImage=`url(${dataUrl})`;
+  document.body.classList.add('hasCustomBg');
+  const wrap=document.getElementById('bgPreviewWrap'), img=document.getElementById('bgPreviewImg'), rm=document.getElementById('removeBgBtn');
+  if(wrap) wrap.style.display='block';
+  if(img) img.src=dataUrl;
+  if(rm) rm.style.display='inline-block';
+}
+function downscaleImage(dataUrl,maxDim){
+  return new Promise(resolve=>{
+    try{
+      const img=new Image();
+      img.onload=()=>{
+        const w0=img.width, h0=img.height;
+        if(w0<=maxDim && h0<=maxDim){ resolve(dataUrl); return; }
+        const scale=Math.min(maxDim/w0,maxDim/h0);
+        const w=Math.round(w0*scale), h=Math.round(h0*scale);
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.85));
+      };
+      img.onerror=()=>resolve(dataUrl);
+      img.src=dataUrl;
+    }catch(e){ resolve(dataUrl); }
+  });
+}
+async function handleBgImageChange(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(!f.type || !f.type.startsWith('image/')){ await appAlert('Please choose an image file.'); e.target.value=''; return; }
+  try{
+    const dataUrl=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(reader.result);
+      reader.onerror=reject;
+      reader.readAsDataURL(f);
+    });
+    // Downscale large photos before storing, so a multi-megapixel camera photo
+    // doesn't eat up the phone's storage or slow the app down.
+    const resized=await downscaleImage(dataUrl,1600);
+    await idbSet(BG_IMAGE_STORE,BG_IMAGE_KEY,resized);
+    applyBgImage(resized);
+  }catch(err){ await appAlert('Could not use that picture: '+(err&&err.message?err.message:err)); }
+  e.target.value='';
+}
+async function removeBgImage(){
+  const ok=await appConfirm('Remove the background picture?');
+  if(!ok) return;
+  await idbDelete(BG_IMAGE_STORE,BG_IMAGE_KEY);
+  document.body.classList.remove('hasCustomBg');
+  const layer=document.getElementById('customBgLayer'); if(layer) layer.style.backgroundImage='';
+  const wrap=document.getElementById('bgPreviewWrap'), rm=document.getElementById('removeBgBtn');
+  if(wrap) wrap.style.display='none';
+  if(rm) rm.style.display='none';
+}
+async function initAppearance(){
+  const mode=(await storageGet(THEME_MODE_KEY))||'auto';
+  const palette=(await storageGet(PALETTE_KEY))||'star';
+  applyThemeMode(mode);
+  applyPalette(palette);
+  if(window.matchMedia){
+    const mq=window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange=()=>{ storageGet(THEME_MODE_KEY).then(m=>{ if((m||'auto')==='auto') applyThemeMode('auto'); }); };
+    if(mq.addEventListener) mq.addEventListener('change',onChange); else if(mq.addListener) mq.addListener(onChange);
+  }
+  try{
+    const dataUrl=await idbGet(BG_IMAGE_STORE,BG_IMAGE_KEY);
+    if(dataUrl) applyBgImage(dataUrl);
   }catch(e){}
 }
 function updateBackupFolderStatus(){
