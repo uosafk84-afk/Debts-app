@@ -251,10 +251,6 @@ textarea{resize:vertical;min-height:56px}
   box-shadow:0 8px 20px rgba(24,40,74,.28);cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .fabMiniBtn:active{transform:scale(.95)}
 .fabBackdrop{position:fixed;inset:0;z-index:23;background:rgba(10,20,40,.15);display:none}
-.cornerBtn{position:fixed;left:14px;bottom:22px;z-index:25;border:none;background:var(--glass);border:1px solid var(--glassBorder);
-  color:var(--text2);width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 12px rgba(24,40,74,.18);opacity:.8;transition:transform .15s var(--spring),opacity .15s}
-.cornerBtn:active{transform:scale(.9);opacity:1}
 .fabBackdrop.show{display:block}
 .searchBar{display:flex;gap:8px;margin-bottom:10px}
 .searchBar input{flex:1}
@@ -578,6 +574,27 @@ textarea{resize:vertical;min-height:56px}
 <p class="small" id="backupFolderStatus" style="margin-top:6px"></p>
 </div>
 <div class="section glass">
+<h2>☁️ OneDrive Auto-Backup</h2>
+<p class="small">Every automatic backup (every 12 hours) is also sent to your Microsoft OneDrive, in the folder <b>Apps</b>. If you are offline, it waits and uploads when internet returns.</p>
+<p class="small" style="white-space:pre-line;font-weight:700" id="odStatus"></p>
+<details style="margin:8px 0"><summary class="small" style="cursor:pointer;font-weight:700">One-time setup (free, 5 minutes)</summary>
+<ol class="small" style="padding-left:18px;margin:8px 0">
+<li>Open <b>portal.azure.com</b> → search <b>App registrations</b> → <b>New registration</b>.</li>
+<li>Name: Shop Debts. Account type: <b>Personal Microsoft accounts only</b> (or "any directory and personal"). Create it.</li>
+<li>On the app page: <b>Authentication</b> → <b>Add a platform</b> → <b>Single-page application</b> → Redirect URI = the address below → Configure.</li>
+<li>Copy the <b>Application (client) ID</b> from the Overview page and paste it here.</li>
+</ol>
+<div class="small">Redirect URI to enter in Azure:</div>
+<div class="small" id="odRedirectShow" style="font-weight:700;word-break:break-all;user-select:all"></div>
+</details>
+<input type="text" id="odClientId" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px" placeholder="Application (client) ID" autocomplete="off">
+<button type="button" class="primary" id="odConnectBtn" style="margin-top:10px" onclick="odConnectClick()">🔗 Connect OneDrive</button>
+<div class="formActions" style="margin-top:8px">
+<button type="button" class="secondaryBtn" id="odNowBtn" style="flex:1;display:none" onclick="odBackupNowClick()">⬆️ Back Up Now</button>
+<button type="button" class="secondaryBtn" id="odDisconnectBtn" style="flex:1;display:none" onclick="odDisconnectClick()">Disconnect</button>
+</div>
+</div>
+<div class="section glass">
 <h2>📥 Restore Backup</h2>
 <p class="small">Restores debts from a backup file made by this app's Export button. Restored entries are added alongside your current data (nothing existing is deleted).</p>
 <label class="fileLbl" for="restoreFile">Choose Backup File…</label>
@@ -631,24 +648,6 @@ textarea{resize:vertical;min-height:56px}
   <button type="button" class="fabMiniBtn" onclick="quickAddAction('cashin')">💵 Cash In</button>
 </div>
 <button type="button" class="fab" id="fabBtn" onclick="toggleQuickAdd()">+</button>
-<button type="button" class="cornerBtn" id="sulphonicCornerBtn" title="Sulphonic Acid" onclick="openSulphonicModal()">🧪</button>
-
-<div id="sulphonicOverlay" class="modalOverlay" style="display:none">
-  <div class="modalBox glass" style="max-width:380px">
-    <div style="font-weight:700;font-size:15px;margin-bottom:4px">🧪 Sulphonic Acid Usage</div>
-    <div class="small" style="margin-bottom:10px">A small separate log — just tracks how much you've used, doesn't touch the rest of the app's numbers.</div>
-    <div class="statRow" style="margin-bottom:10px"><span>Total Used</span><b id="sulphonicTotal">0</b></div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <input type="number" id="sulphonicAmount" placeholder="Amount used" style="flex:1;border-radius:10px;padding:8px" inputmode="decimal">
-      <input type="text" id="sulphonicNote" placeholder="Note (optional)" style="flex:1;border-radius:10px;padding:8px">
-    </div>
-    <button type="button" class="primary" style="width:100%" onclick="addSulphonicEntry()">➕ Add</button>
-    <div id="sulphonicList" style="margin-top:12px;max-height:240px;overflow-y:auto"></div>
-    <div class="formActions" style="margin-top:12px">
-      <button type="button" class="secondaryBtn" style="flex:1" onclick="closeSulphonicModal()">Close</button>
-    </div>
-  </div>
-</div>
 <script>
 function appAlert(msg){
   return new Promise(resolve=>{
@@ -963,7 +962,7 @@ function flashSaved(){
 function save(changedPerson){storageSet(KEY,JSON.stringify(state));if(changedPerson)cloudSyncPerson(changedPerson);flashSaved()}
 function forceFlush(){ try{ storageSet(KEY,JSON.stringify(state)); }catch(e){} }
 
-let state={debts:[],inventory:[],cashLog:[],snapshots:[],sulphonicLog:[]};
+let state={debts:[],inventory:[],cashLog:[],snapshots:[]};
 function uid(){return 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function money(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
 function migrate(){
@@ -1029,7 +1028,7 @@ function recordSnapshotIfNeeded(){
 async function init(){
   history.replaceState({view:'dashboard',ov:null},'');
   try{ const raw=await storageGet(KEY); if(raw){ const parsed=JSON.parse(raw);
-    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[]; state.sulphonicLog=parsed.sulphonicLog||[];
+    state.debts=parsed.debts||[]; state.inventory=parsed.inventory||[]; state.cashLog=parsed.cashLog||[]; state.snapshots=parsed.snapshots||[];
     migrate();
   } }catch(e){}
   document.getElementById('fDateGiven').value=today();
@@ -1040,10 +1039,131 @@ async function init(){
   restoreBackupFolderHandle();
   restoreCloudSettingsOnLoad();
   initAppearance();
+  odInit();
 }
+// ---------- OneDrive automatic backup (Microsoft Graph, app-folder only) ----------
+// Files go to  OneDrive > Apps > <your app's name>.  The app can only see its own folder.
+const OD_CLIENT_KEY='shop_debts_od_client', OD_TOK_KEY='shop_debts_od_tokens', OD_VER_KEY='shop_debts_od_verifier',
+      OD_PEND_KEY='shop_debts_od_pending', OD_SILENT_KEY='shop_debts_od_silentTry', OD_LAST_KEY='shop_debts_od_lastOk',
+      OD_MSG_KEY='shop_debts_od_msg';
+const OD_AUTH='https://login.microsoftonline.com/common/oauth2/v2.0';
+const OD_SCOPE='Files.ReadWrite.AppFolder offline_access';
+const odLS={ get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} }, del(k){ try{localStorage.removeItem(k);}catch(e){} } };
+function odRedirectUri(){ return location.origin+location.pathname.replace(/index\.html$/,''); }
+function odTokens(){ try{ return JSON.parse(odLS.get(OD_TOK_KEY)||'null'); }catch(e){ return null; } }
+function odConnected(){ const t=odTokens(); return !!(t && t.refresh); }
+const odB64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function odStartAuth(silent){
+  const cid=(odLS.get(OD_CLIENT_KEY)||'').trim(); if(!cid) return;
+  const verifier=odB64(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge=odB64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));
+  const st=odB64(crypto.getRandomValues(new Uint8Array(12)));
+  odLS.set(OD_VER_KEY,JSON.stringify({v:verifier,s:st,silent:!!silent}));
+  const p=new URLSearchParams({client_id:cid,response_type:'code',redirect_uri:odRedirectUri(),response_mode:'query',scope:OD_SCOPE,
+    code_challenge:challenge,code_challenge_method:'S256',state:st});
+  if(silent) p.set('prompt','none');
+  location.href=OD_AUTH+'/authorize?'+p.toString();
+}
+async function odTokenRequest(params){
+  const r=await fetch(OD_AUTH+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(params)});
+  const j=await r.json();
+  if(!r.ok||!j.access_token) throw new Error(j.error_description||j.error||'Sign-in failed');
+  const old=odTokens()||{};
+  odLS.set(OD_TOK_KEY,JSON.stringify({access:j.access_token,refresh:j.refresh_token||old.refresh,exp:Date.now()+(Number(j.expires_in)||3600)*1000-60000}));
+  return j.access_token;
+}
+async function odHandleRedirect(){
+  const q=new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return;
+  let saved=null; try{ saved=JSON.parse(odLS.get(OD_VER_KEY)||'null'); }catch(e){}
+  if(!saved || q.get('state')!==saved.s) return;           // not ours
+  odLS.del(OD_VER_KEY);
+  history.replaceState({view:'dashboard',ov:null},'',odRedirectUri());
+  if(q.has('error')){
+    if(!saved.silent) odLS.set(OD_MSG_KEY,'Microsoft sign-in was not completed: '+(q.get('error_description')||q.get('error')));
+    else odLS.set(OD_MSG_KEY,'Please tap "Reconnect OneDrive" to sign in again.');
+    return;
+  }
+  try{
+    await odTokenRequest({client_id:odLS.get(OD_CLIENT_KEY),grant_type:'authorization_code',code:q.get('code'),redirect_uri:odRedirectUri(),code_verifier:saved.v,scope:OD_SCOPE});
+    odLS.del(OD_MSG_KEY);
+    odLS.set(OD_PEND_KEY,'1');           // first upload goes out right away
+  }catch(e){ odLS.set(OD_MSG_KEY,'Could not finish sign-in: '+e.message); }
+}
+async function odAccessToken(){
+  const t=odTokens(); if(!t||!t.refresh) throw new Error('not connected');
+  if(t.access && Date.now()<t.exp) return t.access;
+  try{ return await odTokenRequest({client_id:odLS.get(OD_CLIENT_KEY),grant_type:'refresh_token',refresh_token:t.refresh,scope:OD_SCOPE}); }
+  catch(e){ if(navigator.onLine){ odLS.set(OD_MSG_KEY,'OneDrive needs you to sign in again — tap "Reconnect OneDrive".'); e.needsAuth=true; } throw e; }
+}
+async function odUpload(name,buf){
+  for(let attempt=0;attempt<2;attempt++){
+    const tok=await odAccessToken();
+    const r=await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot:/'+encodeURIComponent(name)+':/content',
+      {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:buf});
+    if(r.ok) return true;
+    if(r.status===401 && attempt===0){ const t=odTokens(); if(t){ t.exp=0; odLS.set(OD_TOK_KEY,JSON.stringify(t)); } continue; }
+    throw new Error('OneDrive said '+r.status);
+  }
+}
+// Called after every backup is built. Never throws; if anything fails the upload is retried later.
+async function odSync(name,buf){
+  if(!odConnected()) return;
+  if(!navigator.onLine){ odLS.set(OD_PEND_KEY,'1'); odRenderUI(); return; }
+  try{ await odUpload(name,buf); odLS.del(OD_PEND_KEY); odLS.set(OD_LAST_KEY,String(Date.now())); odLS.del(OD_MSG_KEY); }
+  catch(e){ odLS.set(OD_PEND_KEY,'1'); if(!odLS.get(OD_MSG_KEY)) odLS.set(OD_MSG_KEY,'Last upload failed — will retry automatically.'); }
+  odRenderUI();
+}
+function odRetryPending(){ if(odConnected() && odLS.get(OD_PEND_KEY)==='1' && navigator.onLine) exportBackupExcel(true,true); }
+async function odInit(){
+  await odHandleRedirect();
+  odRenderUI();
+  if(!odConnected()) return;
+  try{ await odAccessToken(); }
+  catch(e){
+    // Refresh token expired (Microsoft limits browser apps to ~24h). Try a quiet re-sign-in once in a while.
+    if(e.needsAuth){
+      const last=Number(odLS.get(OD_SILENT_KEY))||0;
+      if(Date.now()-last>3*3600*1000){ odLS.set(OD_SILENT_KEY,String(Date.now())); odStartAuth(true); return; }
+    }
+  }
+  odRetryPending();
+  odRenderUI();
+}
+function odRenderUI(){
+  const el=document.getElementById('odStatus'); if(!el) return;
+  const cidEl=document.getElementById('odClientId'); if(cidEl && !cidEl.value) cidEl.value=odLS.get(OD_CLIENT_KEY)||'';
+  const ru=document.getElementById('odRedirectShow'); if(ru) ru.textContent=odRedirectUri();
+  const c=odConnected(), last=Number(odLS.get(OD_LAST_KEY))||0, msg=odLS.get(OD_MSG_KEY);
+  let t;
+  if(!c) t='Not connected.';
+  else t='✅ Connected.'+(last?' Last upload: '+new Date(last).toLocaleString():' Waiting for the first upload.')+(odLS.get(OD_PEND_KEY)==='1'?' (An upload is waiting for internet.)':'');
+  if(msg) t+='\n⚠️ '+msg;
+  el.textContent=t;
+  const b=document.getElementById('odConnectBtn'); if(b) b.textContent=c?'🔄 Reconnect OneDrive':'🔗 Connect OneDrive';
+  ['odNowBtn','odDisconnectBtn'].forEach(id=>{ const x=document.getElementById(id); if(x) x.style.display=c?'':'none'; });
+}
+function odConnectClick(){
+  const cid=document.getElementById('odClientId').value.trim();
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)){ appAlert('Please paste the Application (client) ID from Azure first — it looks like 1a2b3c4d-1234-5678-abcd-0123456789ab.'); return; }
+  if(!navigator.onLine){ appAlert('You need internet to sign in to OneDrive.'); return; }
+  odLS.set(OD_CLIENT_KEY,cid); odStartAuth(false);
+}
+async function odBackupNowClick(){
+  if(!navigator.onLine){ await appAlert('No internet right now — it will upload automatically when you are back online.'); odLS.set(OD_PEND_KEY,'1'); odRenderUI(); return; }
+  await exportBackupExcel(true,true);
+  odRenderUI();
+  appAlert(odLS.get(OD_PEND_KEY)==='1'?'Upload did not go through yet — it will retry automatically.':'Backup uploaded to OneDrive.');
+}
+async function odDisconnectClick(){
+  if(!await appConfirm('Disconnect OneDrive? Backups already in your OneDrive stay there.')) return;
+  [OD_TOK_KEY,OD_PEND_KEY,OD_MSG_KEY,OD_LAST_KEY].forEach(odLS.del); odRenderUI();
+}
+window.addEventListener('online',()=>{ odRetryPending(); });
 const AUTO_BACKUP_KEY='shop_debts_lastAutoBackup';
 const AUTO_BACKUP_MS=12*60*60*1000;
 async function autoBackupIfDue(){
+  odRetryPending();
   try{
     const last=Number(await storageGet(AUTO_BACKUP_KEY))||0;
     if(Date.now()-last < AUTO_BACKUP_MS) return;
@@ -1071,7 +1191,7 @@ function scheduleFlush(){
 }
 
 let lastListView=null;
-const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay','searchOverlay','sulphonicOverlay'];
+const OVERLAY_IDS=['modalOverlay','payOverlay','itemOverlay','inventoryOverlay','sellOverlay','cashOverlay','searchOverlay'];
 function currentViewId(){ const el=document.querySelector('.view.active'); return el?el.id:'dashboard'; }
 function showUI(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1115,7 +1235,6 @@ function renderAll(){
   renderAlphaList();
   renderPortfolio();
   updateBackupBanner();
-  renderSulphonicLog();
 }
 async function updateBackupBanner(){
   const banner=document.getElementById('backupBanner'); if(!banner) return;
@@ -1406,52 +1525,6 @@ async function deleteCashEntry(id){
   state.cashLog=(state.cashLog||[]).filter(x=>x.id!==id);
   storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopCashLog',id); flashSaved();
   renderAll();
-}
-// Sulphonic Acid usage log — a tiny, isolated tracker tucked in a corner button.
-// It intentionally does not touch cash/inventory/debt totals anywhere else in the app.
-function openSulphonicModal(){
-  document.getElementById('sulphonicAmount').value='';
-  document.getElementById('sulphonicNote').value='';
-  renderSulphonicLog();
-  document.getElementById('sulphonicOverlay').style.display='flex';
-  pushModalState('sulphonicOverlay');
-}
-function closeSulphonicModal(){ history.back(); }
-async function addSulphonicEntry(){
-  const amount=Number(document.getElementById('sulphonicAmount').value);
-  if(!amount||amount<=0){ await appAlert('Please enter a valid amount used.'); return; }
-  const note=document.getElementById('sulphonicNote').value.trim();
-  const entry={id:uid(),date:today(),amount,note};
-  state.sulphonicLog=state.sulphonicLog||[]; state.sulphonicLog.push(entry);
-  storageSet(KEY,JSON.stringify(state)); cloudSyncDoc('shopSulphonicLog',entry); flashSaved();
-  document.getElementById('sulphonicAmount').value='';
-  document.getElementById('sulphonicNote').value='';
-  renderSulphonicLog();
-}
-async function deleteSulphonicEntry(id){
-  const en=(state.sulphonicLog||[]).find(x=>x.id===id); if(!en) return;
-  const ok=await appConfirm(`Remove this entry of ${money(en.amount)} used on ${en.date}?`);
-  if(!ok) return;
-  state.sulphonicLog=(state.sulphonicLog||[]).filter(x=>x.id!==id);
-  storageSet(KEY,JSON.stringify(state)); cloudDeleteDoc('shopSulphonicLog',id); flashSaved();
-  renderSulphonicLog();
-}
-function renderSulphonicLog(){
-  const totalEl=document.getElementById('sulphonicTotal');
-  const listEl=document.getElementById('sulphonicList');
-  if(!totalEl||!listEl) return;
-  const log=(state.sulphonicLog||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||0);
-  const total=log.reduce((s,e)=>s+(Number(e.amount)||0),0);
-  totalEl.textContent=money(total);
-  if(!log.length){ listEl.innerHTML='<div class="small" style="opacity:.7;padding:8px 0">No usage logged yet.</div>'; return; }
-  listEl.innerHTML=log.map(e=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--sep)">
-      <span>
-        <b>${money(e.amount)}</b> <span class="small" style="opacity:.75">${e.date}</span>
-        ${e.note?`<div class="small" style="opacity:.7">${e.note}</div>`:''}
-      </span>
-      <button type="button" style="background:none;border:none;cursor:pointer;font-size:13px" onclick="deleteSulphonicEntry('${e.id}')">🗑</button>
-    </div>`).join('');
 }
 function renderDashboard(){
   const active=state.debts.filter(d=>!isSettled(d));
@@ -1795,7 +1868,7 @@ let statementId=null;
 function openStatement(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   statementId=id;
-  document.getElementById('stTitle').textContent='📄 '+d.name;
+  document.getElementById('stTitle').textContent='📄 Statement';
   const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
   const itemsHtml=items.length ? items.map(it=>`
     <div class="debtCard glass" style="margin-bottom:8px;padding:12px 14px">
@@ -1819,13 +1892,23 @@ function openStatement(id){
     : '<div class="small">No payments recorded yet.</div>';
   const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
   document.getElementById('stBody').innerHTML=`
-    <div class="statRow"><span>Direction</span><b>${d.direction==='payable'?'🔴 You Owe Them':'🟢 They Owe You'}</b></div>
-    <div class="statRow"><span>Term</span><b>${d.category==='long'?'Long Term':'Short Term'}</b></div>
-    ${d.phone?`<div class="statRow"><span>Phone</span><b>${escapeHtml(d.phone)}</b></div>`:''}
-    ${d.address?`<div class="statRow"><span>Address</span><b>${escapeHtml(d.address)}</b></div>`:''}
-    <div class="statRow"><span>Total Due</span><b>${money(totalDue(d))} AFN</b></div>
-    <div class="statRow"><span>Paid So Far</span><b>${money(paidSoFar(d))} AFN</b></div>
-    <div class="statRow"><span>Remaining</span><b>${money(remaining(d))} AFN</b></div>
+    <div style="text-align:right;font-size:10.5px;line-height:1.4;opacity:.62;margin:-6px 0 10px">
+      ${escapeHtml(d.name)}${d.phone?' · '+escapeHtml(d.phone):''}${d.address?'<br>'+escapeHtml(d.address):''}
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:8px">
+      <div style="flex:1;border-radius:20px;padding:20px 14px;color:#fff;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 8px 20px rgba(24,40,74,.25)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;opacity:.9">${isSettled(d)?'FULLY PAID':'REMAINING'}</div>
+        <div style="font-size:30px;font-weight:800;margin-top:8px;line-height:1.1;word-break:break-word">${money(remaining(d))}</div>
+        <div style="font-size:12px;font-weight:700;opacity:.9;margin-top:2px">AFN</div>
+      </div>
+      <div style="flex:1;border-radius:20px;padding:20px 14px;color:#fff;background:linear-gradient(135deg,#0f7f4d,#1fb577);box-shadow:0 8px 20px rgba(15,127,77,.25)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;opacity:.95">RECEIVED</div>
+        <div style="font-size:30px;font-weight:800;margin-top:8px;line-height:1.1;word-break:break-word">${money(paidSoFar(d))}</div>
+        <div style="font-size:12px;font-weight:700;opacity:.95;margin-top:2px">AFN</div>
+      </div>
+    </div>
+    <div class="statRow" style="margin-bottom:12px"><span>All the money (Total)</span><b>${money(totalDue(d))} AFN</b></div>
+    <div class="small" style="opacity:.7;margin-bottom:6px">${d.direction==='payable'?'🔴 You owe them':'🟢 They owe you'} · ${d.category==='long'?'Long Term':'Short Term'}</div>
     <div class="statRow"><span>Date Given</span><b>${dateGiven||'—'}</b></div>
     ${dueDate?`<div class="statRow"><span>Due Date</span><b>${dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
     <div class="statRow"><span>Status</span><b>${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}</b></div>
@@ -1877,84 +1960,168 @@ async function copyStatement(){
 async function shareStatementImage(){
   const d=state.debts.find(x=>x.id===statementId); if(!d) return;
   const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
-  const W=720, pad=36;
-  const rowH=54;
-  const headerH=200;
-  const footerH=150;
-  const H=headerH + Math.max(items.length,1)*rowH + footerH;
-  const canvas=document.createElement('canvas');
-  canvas.width=W; canvas.height=H;
-  const ctx=canvas.getContext('2d');
+  const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const settled=isSettled(d), overdue=!settled && isOverdue(d);
+  const payable=d.direction==='payable';
+  const dueDate=nextDueDate(d);
+  const logo=await new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src='logo-star.png'; });
 
-  // Background
-  const bg=ctx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#18284a'); bg.addColorStop(1,'#223663');
-  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
-
-  // Header card
-  ctx.fillStyle='#ffffff';
-  roundRect(ctx,pad,pad,W-pad*2,headerH-pad*1.4,18); ctx.fill();
-  ctx.fillStyle='#18284a';
-  ctx.font='700 26px system-ui,sans-serif';
-  ctx.fillText('🛍️ Shop Debts — Statement',pad+22,pad+42);
-  ctx.font='700 23px system-ui,sans-serif';
-  ctx.fillStyle='#18284a';
-  ctx.fillText(d.name,pad+22,pad+82);
-  ctx.font='400 15px system-ui,sans-serif';
-  ctx.fillStyle='#55607a';
-  let subY=pad+108;
-  ctx.fillText(d.direction==='payable'?'You owe them':'They owe you', pad+22, subY);
-  if(d.phone){ subY+=22; ctx.fillText('Phone: '+d.phone, pad+22, subY); }
-
-  // Items list
-  let y=headerH+18;
-  ctx.font='600 16px system-ui,sans-serif';
-  items.forEach((it,i)=>{
-    const rowY=y+i*rowH;
-    ctx.fillStyle = i%2===0 ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.03)';
-    roundRect(ctx,pad,rowY,W-pad*2,rowH-10,10); ctx.fill();
-    ctx.fillStyle='#ffffff';
-    ctx.font='700 15px system-ui,sans-serif';
-    ctx.fillText(it.description||'Debt', pad+18, rowY+22);
-    ctx.font='400 13px system-ui,sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.75)';
-    ctx.fillText('Date: '+(it.dateGiven||'—'), pad+18, rowY+40);
-    ctx.font='700 16px system-ui,sans-serif';
-    ctx.fillStyle='#ffffff';
-    const amtTxt=money(Number(it.amount||0)+Number(it.extra||0))+' AFN';
-    const amtW=ctx.measureText(amtTxt).width;
-    ctx.fillText(amtTxt, W-pad-18-amtW, rowY+30);
-  });
-  if(!items.length){
-    ctx.fillStyle='rgba(255,255,255,.75)';
-    ctx.font='400 15px system-ui,sans-serif';
-    ctx.fillText('No debts listed.', pad+18, y+24);
-  }
-
-  // Footer totals card
-  const fy=headerH+Math.max(items.length,1)*rowH+14;
-  ctx.fillStyle='#ffffff';
-  roundRect(ctx,pad,fy,W-pad*2,footerH-26,18); ctx.fill();
-  const drawStat=(label,value,yy,big)=>{
-    ctx.fillStyle='#55607a'; ctx.font='400 14px system-ui,sans-serif';
-    ctx.fillText(label,pad+22,yy);
-    ctx.fillStyle='#18284a'; ctx.font=(big?'800 24px':'700 16px')+' system-ui,sans-serif';
-    const txt=money(value)+' AFN';
-    const w=ctx.measureText(txt).width;
-    ctx.fillText(txt, W-pad-22-w, yy+(big?2:0));
+  const W=800, S=2, pad=34, inner=W-pad*2;
+  const SANS='-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",system-ui,Roboto,sans-serif';
+  const SERIF=SANS;
+  const measure=document.createElement('canvas').getContext('2d');
+  const fit=(txt,font,maxW)=>{
+    measure.font=font; txt=String(txt==null?'':txt);
+    if(measure.measureText(txt).width<=maxW) return txt;
+    while(txt.length>1 && measure.measureText(txt+'…').width>maxW) txt=txt.slice(0,-1);
+    return txt+'…';
   };
-  drawStat('Total', totalDue(d), fy+34, false);
-  drawStat('Money Remaining', remaining(d), fy+78, true);
+  const HEAD=190, custH=162+((d.phone?1:0)+(d.address?1:0))*26;
+  const secH=52, itemRowH=66, payRowH=44, sumH=250;
+  const H=HEAD+custH+secH+Math.max(items.length,1)*itemRowH+(pays.length?secH+pays.length*payRowH:0)+sumH+110;
 
-  function roundRect(c,x,x2,w,h,r){
-    c.beginPath();
-    c.moveTo(x+r,x2);
-    c.arcTo(x+w,x2,x+w,x2+h,r);
-    c.arcTo(x+w,x2+h,x,x2+h,r);
-    c.arcTo(x,x2+h,x,x2,r);
-    c.arcTo(x,x2,x+w,x2,r);
-    c.closePath();
+  const canvas=document.createElement('canvas');
+  canvas.width=W*S; canvas.height=H*S;
+  const ctx=canvas.getContext('2d'); ctx.scale(S,S);
+  const rr=(x,y,w,h,r)=>{ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); };
+  const text=(t,x,y,font,color,align,sp)=>{ ctx.font=font; ctx.fillStyle=color; ctx.textAlign=align||'left'; if('letterSpacing' in ctx) ctx.letterSpacing=sp||'0px'; ctx.fillText(t,x,y); if('letterSpacing' in ctx) ctx.letterSpacing='0px'; ctx.textAlign='left'; };
+  const GOLD='#8a5a08', ICE='#2f6fe0', WHITE='#12234a', SOFT='#2c3e63', GREEN='#0b7a46';
+
+  // ---- crystal background ----
+  const bg=ctx.createLinearGradient(0,0,W*.6,H); bg.addColorStop(0,'#f7fbff'); bg.addColorStop(.5,'#e6f0ff'); bg.addColorStop(1,'#e4f6f4');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  const orb=(x,y,r,c)=>{ const g=ctx.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,c); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(x-r,y-r,r*2,r*2); };
+  orb(W*.85,120,330,'rgba(110,170,255,.50)'); orb(40,H*.38,300,'rgba(165,140,255,.32)');
+  orb(W*.8,H*.68,340,'rgba(60,210,215,.32)'); orb(120,H-60,300,'rgba(255,214,140,.40)');
+  // faint crystal facets
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  ctx.lineWidth=1;
+  for(let i=0;i<26;i++){
+    const cx=rnd()*W, cy=rnd()*H, r=30+rnd()*90, a=rnd()*6.28;
+    ctx.beginPath();
+    for(let k=0;k<3;k++){ const an=a+k*2.094+rnd()*.5; const px=cx+Math.cos(an)*r, py=cy+Math.sin(an)*r; k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); ctx.fillStyle='rgba(255,255,255,'+(.10+rnd()*.18)+')'; ctx.fill();
+    ctx.strokeStyle='rgba(90,140,210,'+(.07+rnd()*.10)+')'; ctx.stroke();
   }
+
+  // faint logo watermark behind everything (kept light so text stays crisp)
+  if(logo){
+    const wsz=Math.min(W*.82,H*.5), wx=W/2, wy=HEAD+(H-HEAD)*.5;
+    ctx.save(); ctx.globalAlpha=.15; ctx.beginPath(); ctx.arc(wx,wy,wsz/2,0,7); ctx.clip();
+    ctx.drawImage(logo,wx-wsz/2,wy-wsz/2,wsz,wsz); ctx.restore();
+  }
+  // glass panel helper
+  const glass=(x,y,w,h,r,strong)=>{
+    ctx.save();
+    ctx.shadowColor='rgba(40,80,150,.22)'; ctx.shadowBlur=26; ctx.shadowOffsetY=10;
+    const f=ctx.createLinearGradient(x,y,x+w*.4,y+h);
+    f.addColorStop(0,'rgba(255,255,255,'+(strong?.62:.52)+')'); f.addColorStop(1,'rgba(255,255,255,'+(strong?.40:.30)+')');
+    ctx.fillStyle=f; rr(x,y,w,h,r); ctx.fill(); ctx.restore();
+    // top gloss
+    ctx.save(); rr(x,y,w,h,r); ctx.clip();
+    const gl=ctx.createLinearGradient(0,y,0,y+h*.5); gl.addColorStop(0,'rgba(255,255,255,.55)'); gl.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=gl; ctx.fillRect(x,y,w,h*.5); ctx.restore();
+    // bevelled edge
+    const eg=ctx.createLinearGradient(x,y,x+w,y+h); eg.addColorStop(0,'rgba(255,255,255,1)'); eg.addColorStop(.5,'rgba(150,190,240,.35)'); eg.addColorStop(1,'rgba(255,255,255,.9)');
+    ctx.lineWidth=1.3; ctx.strokeStyle=eg; rr(x+.65,y+.65,w-1.3,h-1.3,r); ctx.stroke();
+  };
+  const diamond=(cx,cy,r,fill)=>{ ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r,cy); ctx.lineTo(cx,cy+r); ctx.lineTo(cx-r,cy); ctx.closePath(); ctx.fillStyle=fill; ctx.fill(); };
+  const rule=(x,y,w)=>{ const g=ctx.createLinearGradient(x,0,x+w,0); g.addColorStop(0,'rgba(190,140,50,0)'); g.addColorStop(.5,'rgba(190,140,50,.75)'); g.addColorStop(1,'rgba(190,140,50,0)'); ctx.fillStyle=g; ctx.fillRect(x,y,w,1.5); };
+
+  // ---- header ----
+  const lcx=pad+54, lcy=HEAD/2+4;
+  ctx.save(); ctx.shadowColor='rgba(80,140,230,.45)'; ctx.shadowBlur=26; ctx.beginPath(); ctx.arc(lcx,lcy,52,0,7); ctx.fillStyle='rgba(255,255,255,.95)'; ctx.fill(); ctx.restore();
+  if(logo){ ctx.save(); ctx.beginPath(); ctx.arc(lcx,lcy,50,0,7); ctx.clip(); ctx.drawImage(logo,lcx-50,lcy-50,100,100); ctx.restore(); }
+  ctx.lineWidth=2.5; ctx.strokeStyle=GOLD; ctx.beginPath(); ctx.arc(lcx,lcy,53,0,7); ctx.stroke();
+  const tx=pad+132;
+  text('STAR SHAMPOO & WASLEEN',tx,lcy-18,`700 24px ${SERIF}`,WHITE,'left','2px');
+  text('F A C T O R Y',tx,lcy+8,`600 14px ${SANS}`,GOLD);
+  rule(tx,lcy+22,260);
+  text('ACCOUNT STATEMENT   ·   '+today(),tx,lcy+46,`600 13px ${SANS}`,SOFT,'left','1.5px');
+
+  // ---- customer ----
+  let y=HEAD;
+  glass(pad,y,inner,custH-14,26);
+  text(payable?'PAYABLE TO':'PREPARED FOR',pad+30,y+36,`600 12px ${SANS}`,GOLD,'left','3px');
+  text(fit(d.name,`700 34px ${SANS}`,inner-230),pad+30,y+78,`700 34px ${SANS}`,WHITE);
+  const bTxt=settled?'SETTLED':(overdue?'OVERDUE':'ACTIVE');
+  const bCol=settled?'19,154,92':(overdue?'214,64,74':'201,130,12');
+  ctx.font=`700 13px ${SANS}`; if('letterSpacing' in ctx) ctx.letterSpacing='2px'; const bw=ctx.measureText(bTxt).width+40; if('letterSpacing' in ctx) ctx.letterSpacing='0px';
+  ctx.fillStyle=`rgba(${bCol},.12)`; rr(W-pad-30-bw,y+26,bw,34,17); ctx.fill();
+  ctx.lineWidth=1.3; ctx.strokeStyle=`rgba(${bCol},.9)`; rr(W-pad-30-bw,y+26,bw,34,17); ctx.stroke();
+  text(bTxt,W-pad-30-bw/2,y+48,`700 13px ${SANS}`,`rgb(${bCol})`,'center','2px');
+  rule(pad+30,y+94,inner-60);
+  let ly=y+122;
+  const meta=['Term: '+(d.category==='long'?'Long Term':'Short Term')+(dueDate?'    ·    Next due: '+dueDate+(overdue?' ('+daysOverdue(d)+' days overdue)':''):'')];
+  if(d.phone) meta.push('Phone: '+d.phone);
+  if(d.address) meta.push('Address: '+d.address);
+  meta.forEach(m=>{ text(fit(m,`400 15px ${SANS}`,inner-60),pad+30,ly,`500 16px ${SANS}`,'#12234a'); ly+=26; });
+  y+=custH+10;
+
+  // ---- debts ----
+  text('DEBT DETAILS',pad+6,y+24,`700 13px ${SANS}`,GOLD,'left','3px');
+  text(items.length+(items.length===1?' item':' items'),W-pad-6,y+24,`600 14px ${SANS}`,SOFT,'right');
+  y+=secH-8;
+  if(!items.length){ text('No debts listed.',pad+26,y+34,`500 16px ${SANS}`,SOFT); y+=itemRowH; }
+  items.forEach((it,i)=>{
+    const ry=y+i*itemRowH, rh=itemRowH-10;
+    glass(pad,ry,inner,rh,18);
+    diamond(pad+34,ry+rh/2,17,'rgba(201,150,50,.14)');
+    ctx.strokeStyle='rgba(169,117,26,.75)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(pad+34,ry+rh/2-17); ctx.lineTo(pad+51,ry+rh/2); ctx.lineTo(pad+34,ry+rh/2+17); ctx.lineTo(pad+17,ry+rh/2); ctx.closePath(); ctx.stroke();
+    text(String(i+1),pad+34,ry+rh/2+5,`700 14px ${SANS}`,GOLD,'center');
+    text(fit(it.description||'Debt',`600 17px ${SANS}`,inner-250),pad+68,ry+25,`600 17px ${SANS}`,WHITE);
+    text('Given '+(it.dateGiven||'—')+(it.dueDate?'    ·    Due '+it.dueDate:''),pad+68,ry+44,`500 14px ${SANS}`,SOFT);
+    const amt=Number(it.amount||0)+Number(it.extra||0);
+    text(money(amt),W-pad-62,ry+(it.extra?27:33),`700 20px ${SERIF}`,WHITE,'right');
+    text('AFN',W-pad-24,ry+(it.extra?27:33),`600 12px ${SANS}`,GOLD,'right','1px');
+    if(it.extra) text('incl. '+money(it.extra)+' extra',W-pad-24,ry+45,`500 13px ${SANS}`,SOFT,'right');
+  });
+  y+=Math.max(items.length,1)*itemRowH;
+
+  // ---- payments ----
+  if(pays.length){
+    y+=8;
+    text('PAYMENTS RECEIVED',pad+6,y+24,`700 13px ${SANS}`,GREEN,'left','3px');
+    y+=secH-8;
+    pays.forEach((p,i)=>{
+      const ry=y+i*payRowH, rh=payRowH-8;
+      glass(pad,ry,inner,rh,16);
+      ctx.fillStyle='rgba(19,154,92,.95)'; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,5,0,7); ctx.fill();
+      ctx.strokeStyle='rgba(19,154,92,.30)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,10,0,7); ctx.stroke();
+      text(p.date||'—',pad+52,ry+rh/2+5,`500 15px ${SANS}`,WHITE);
+      text('− '+money(p.amount),W-pad-62,ry+rh/2+6,`700 17px ${SERIF}`,GREEN,'right');
+      text('AFN',W-pad-24,ry+rh/2+6,`600 12px ${SANS}`,GREEN,'right','1px');
+    });
+    y+=pays.length*payRowH;
+  }
+
+  // ---- summary (hero crystal panel) ----
+  y+=16;
+  const sh=sumH-40;
+  glass(pad,y,inner,sh,28,true);
+  ctx.save(); rr(pad,y,inner,sh,28); ctx.clip();
+  const sheen=ctx.createLinearGradient(pad,y,pad+inner,y+sh);
+  sheen.addColorStop(0,'rgba(255,255,255,0)'); sheen.addColorStop(.42,'rgba(255,255,255,0)'); sheen.addColorStop(.5,'rgba(255,255,255,.45)'); sheen.addColorStop(.58,'rgba(255,255,255,0)'); sheen.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=sheen; ctx.fillRect(pad,y,inner,sh); ctx.restore();
+  text('Total Amount',pad+34,y+48,`500 18px ${SANS}`,SOFT);
+  text(money(totalDue(d)),W-pad-84,y+49,`700 22px ${SERIF}`,WHITE,'right'); text('AFN',W-pad-34,y+49,`600 12px ${SANS}`,GOLD,'right','1px');
+  text('Paid So Far',pad+34,y+86,`500 18px ${SANS}`,SOFT);
+  text(money(paidSoFar(d)),W-pad-84,y+87,`700 22px ${SERIF}`,GREEN,'right'); text('AFN',W-pad-34,y+87,`600 12px ${SANS}`,GREEN,'right','1px');
+  rule(pad+34,y+108,inner-68);
+  text(settled?'FULLY PAID':'MONEY REMAINING',pad+34,y+158,`700 14px ${SANS}`,GOLD,'left','3px');
+  // glowing hero number
+  const rem=money(remaining(d));
+  ctx.save(); ctx.shadowColor='rgba(255,255,255,.9)'; ctx.shadowBlur=14;
+  const hg=ctx.createLinearGradient(0,y+120,0,y+175); hg.addColorStop(0,'#12234a'); hg.addColorStop(1,'#2f6fe0');
+  ctx.font=`700 50px ${SERIF}`; ctx.fillStyle=hg; ctx.textAlign='right'; ctx.fillText(rem,W-pad-96,y+168); ctx.restore();
+  text('AFN',W-pad-34,y+166,`700 16px ${SANS}`,GOLD,'right','2px');
+  y+=sh;
+
+  // ---- footer ----
+  rule(W/2-120,y+34,240);
+  diamond(W/2,y+35,4,GOLD);
+  text('Thank you for your business',W/2,y+66,`500 17px ${SANS}`,WHITE,'center');
+  text('STAR SHAMPOO AND WASLEEN FACTORY',W/2,y+88,`600 12px ${SANS}`,SOFT,'center','3px');
 
   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
   if(!blob) return;
@@ -1962,7 +2129,7 @@ async function shareStatementImage(){
   const file=new File([blob],fileName,{type:'image/png'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
     try{
-      await navigator.share({files:[file],title:'Shop Debts — '+d.name,text:`Statement for ${d.name} — ${money(remaining(d))} AFN remaining.`});
+      await navigator.share({files:[file],title:'Statement — '+d.name,text:`Statement for ${d.name} — ${money(remaining(d))} AFN remaining.`});
       return;
     }catch(e){ if(e && e.name==='AbortError') return; }
   }
@@ -2160,7 +2327,7 @@ async function loadXLSX(){
     setTimeout(()=>{clearInterval(iv);res()},5000);
   });
 }
-async function exportBackupExcel(silent){
+async function exportBackupExcel(silent,odOnly){
   try{
     await loadXLSX();
     if(!window.XLSX){ if(!silent) await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
@@ -2193,8 +2360,8 @@ async function exportBackupExcel(silent){
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
     const fname=`Shop_Debts_Backup_${today()}.xlsx`;
-    XLSX.writeFile(wb,fname);
-    if(backupDirHandle){
+    if(!odOnly) XLSX.writeFile(wb,fname);
+    if(backupDirHandle && !odOnly){
       try{
         const outBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
         const perm=await backupDirHandle.queryPermission({mode:'readwrite'});
@@ -2206,8 +2373,8 @@ async function exportBackupExcel(silent){
         }
       }catch(e){ /* the Downloads copy already saved, so this is non-fatal */ }
     }
-    storageSet(AUTO_BACKUP_KEY,String(Date.now()));
-    updateBackupBanner();
+    if(!odOnly){ storageSet(AUTO_BACKUP_KEY,String(Date.now())); updateBackupBanner(); }
+    if(odConnected()) await odSync(fname,XLSX.write(wb,{type:'array',bookType:'xlsx'}));
   }catch(err){ if(!silent) appAlert('Could not create the backup file: '+err.message); }
 }
 async function handleRestoreFile(e){
