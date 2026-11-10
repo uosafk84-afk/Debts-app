@@ -493,7 +493,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Net Worth</div><div class="value" id="pfNet">0 AFN</div><div class="hint">Cash + Inventory + Receivables − Payables</div></div></div>
 </div>
 
-<div class="section glass"><h2>📈 Net Worth Trend</h2><div class="small" id="pfTrendCaption" style="margin-bottom:6px"></div><div id="pfTrendChart"></div></div>
+<div class="section glass"><h2>📈 Net Worth Performance</h2><div class="small" id="pfTrendCaption" style="margin-bottom:6px"></div><div id="pfTrendChart"></div></div>
 <div class="section glass"><h2>🧩 What Makes Up Your Worth</h2><div id="pfCompChart"></div></div>
 
 <div class="section glass">
@@ -601,11 +601,13 @@ textarea{resize:vertical;min-height:56px}
 <input type="file" id="restoreFile" accept=".xlsx,.xls" style="display:none" onchange="handleRestoreFile(event)">
 </div>
 <div class="section glass">
-<h2>🔑 Restore Data on a New Phone</h2>
-<p class="small">Only needed if you're setting this app up on a new or different phone and already have a backup account from before. Enter the same email + password you used there and tap Sign In to pull your data down.</p>
+<h2>☁️ Cloud Backup &amp; New-Phone Restore</h2>
+<p class="small" id="cloudStatus" style="font-weight:700"></p>
+<p class="small">First time? Type an email + a password (6+ characters) and tap <b>Create Backup Account</b> — your data then copies to your private online database and keeps syncing by itself. Already have an account (for example on a new phone)? Type the same email + password and tap <b>Sign In</b> to bring your data back.</p>
 <input type="email" id="cloudEmailInput" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px;margin-bottom:6px" placeholder="your-email@example.com">
 <input type="password" id="cloudPassInput" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px" placeholder="Password">
-<button type="button" class="primary" style="margin-top:10px" onclick="signInCloudAccount()">Sign In</button>
+<button type="button" class="primary" style="margin-top:10px" onclick="createCloudAccount()">Create Backup Account</button>
+<button type="button" class="secondaryBtn" style="margin-top:8px;width:100%" onclick="signInCloudAccount()">Sign In</button>
 </div>
 </section>
 
@@ -1014,12 +1016,14 @@ function inventoryValue(){ return (state.inventory||[]).reduce((s,it)=>s+Number(
 function receivablesTotal(){ return state.debts.filter(d=>d.direction==='receivable' && !isSettled(d)).reduce((s,d)=>s+remaining(d),0); }
 function payablesTotal(){ return state.debts.filter(d=>d.direction==='payable' && !isSettled(d)).reduce((s,d)=>s+remaining(d),0); }
 function netWorth(){ return cashBalance()+inventoryValue()+receivablesTotal()-payablesTotal(); }
+function snapSlotKey(){ const n=new Date(); return today()+' '+(n.getHours()<12?'AM':'PM'); }
 function recordSnapshotIfNeeded(){
-  const d=today();
-  const newSnap={id:d,date:d,cash:cashBalance(),inventoryValue:inventoryValue(),receivables:receivablesTotal(),payables:payablesTotal(),netWorth:netWorth()};
+  const d=snapSlotKey();
+  const newSnap={id:d,date:d,ts:Date.now(),cash:cashBalance(),inventoryValue:inventoryValue(),receivables:receivablesTotal(),payables:payablesTotal(),netWorth:netWorth()};
   const idx=(state.snapshots||[]).findIndex(s=>s.date===d);
   const existing=idx>=0?state.snapshots[idx]:null;
   if(existing && existing.cash===newSnap.cash && existing.inventoryValue===newSnap.inventoryValue && existing.receivables===newSnap.receivables && existing.payables===newSnap.payables) return;
+  state.snapshots=state.snapshots||[];
   if(idx>=0) state.snapshots[idx]=newSnap; else state.snapshots.push(newSnap);
   storageSet(KEY,JSON.stringify(state));
   cloudSyncDoc('shopSnapshots',newSnap);
@@ -1292,35 +1296,158 @@ function renderPortfolio(){
     : `<span style="color:#d6404a;font-weight:700">▼ You're Down</span> — you owe <b>${money(Math.abs(net))} AFN more</b> than your assets add up to.`;
   trendEl.innerHTML=statusLine;
 
-  document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps.slice(-14));
+  document.getElementById('pfTrendChart').innerHTML=trendChartSvg(snaps);
   document.getElementById('pfCompChart').innerHTML=compChartSvg(cash,inv,recv,pay);
   renderInventoryList();
   renderCashLogList();
 }
 
-function trendChartSvg(snaps){
-  if(snaps.length<2) return '<div class="empty">Not enough history yet — one point is recorded per day, check back tomorrow to see the trend.</div>';
-  const w=320,h=120,pad=12;
-  const vals=snaps.map(s=>s.netWorth);
-  const min=Math.min(...vals), max=Math.max(...vals);
-  const range=(max-min)||1;
-  const stepX=snaps.length>1?(w-pad*2)/(snaps.length-1):0;
-  const pts=snaps.map((s,i)=>{
-    const x=pad+i*stepX;
-    const y=h-pad-((s.netWorth-min)/range)*(h-pad*2);
-    return [x,y];
-  });
-  const up=snaps[snaps.length-1].netWorth>=0;
-  const color=up?'#1e9e5a':'#d6404a';
-  const path='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
-  const areaPath=path+` L${pts[pts.length-1][0].toFixed(1)},${h-pad} L${pts[0][0].toFixed(1)},${h-pad} Z`;
-  const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${color}"></circle>`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:140px;display:block" preserveAspectRatio="none">
-    <path d="${areaPath}" fill="${color}22"></path>
-    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path>
-    ${dots}
+let trendRange='1M';
+try{ trendRange=localStorage.getItem('shop_debts_trendRange')||'1M'; }catch(e){}
+function setTrendRange(r){ trendRange=r; try{ localStorage.setItem('shop_debts_trendRange',r); }catch(e){} renderPortfolio(); }
+let trendCtx=null;
+function trendChartSvg(allSnaps){
+  if(!allSnaps.length) return '<div class="empty">Your performance chart will appear here as soon as you add some data.</div>';
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const tsOf=s=>s.ts||Date.parse(String(s.date).slice(0,10)+'T12:00:00');
+  const fmtD=t=>{ const d=new Date(t); return d.getDate()+' '+MONTHS[d.getMonth()]; };
+  const fmtFull=t=>{ const d=new Date(t); return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear(); };
+  const sgn=v=>(v>0?'+':(v<0?'−':''))+money(Math.abs(v));
+  // ---- choose the period ----
+  const days={'1W':7,'1M':30,'3M':90}[trendRange];
+  let snaps=allSnaps;
+  if(days){ const cut=Date.now()-days*86400000; snaps=allSnaps.filter(s=>tsOf(s)>=cut); }
+  if(snaps.length<2) snaps=allSnaps.slice(-2);
+  if(snaps.length===1) snaps=[snaps[0],snaps[0]];
+  const n=snaps.length;
+  const vals=snaps.map(s=>Number(s.netWorth)||0), tss=snaps.map(tsOf);
+  const cur=vals[n-1], first=vals[0], prev=vals[n-2];
+  const mx=Math.max(...vals), mn=Math.min(...vals), avg=vals.reduce((a,b)=>a+b,0)/n;
+  const iMax=vals.indexOf(mx), iMin=vals.indexOf(mn);
+  const pChange=cur-first, pPct=first!==0?pChange/Math.abs(first)*100:null;
+  const lChange=cur-prev;
+  const col=v=>v>0?'#1fb577':(v<0?'#e0525c':'var(--text2)');
+  // ---- geometry ----
+  const w=340,h=230,pL=52,pR=18,pT=30,pB=28, plotW=w-pL-pR, plotH=h-pT-pB;
+  const span=Math.max(mx-mn,4000), mid=(mx+mn)/2, lo=mid-span*0.62, hi=mid+span*0.62;
+  const steps=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1e6,2e6,5e6,1e7,2e7,5e7];
+  const step=steps.find(st=>(hi-lo)/st<=5)||steps[steps.length-1];
+  const yOf=v=>pT+(1-(v-lo)/(hi-lo))*plotH;
+  const xOf=i=>pL+i*plotW/(n-1);
+  const pts=vals.map((v,i)=>[xOf(i),yOf(v)]);
+  let grid='';
+  if((hi-lo)/1000<=14 && step>1000){
+    for(let v=Math.ceil(lo/1000)*1000; v<=hi; v+=1000){ if(v%step===0) continue; const y=yOf(v).toFixed(1); grid+=`<line x1="${pL}" x2="${w-pR}" y1="${y}" y2="${y}" stroke="var(--sep)" stroke-width=".5" opacity=".45"></line>`; }
+  }
+  for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step){
+    const y=yOf(v).toFixed(1);
+    grid+=`<line x1="${pL}" x2="${w-pR}" y1="${y}" y2="${y}" stroke="var(--sep)" stroke-width=".9"></line>`;
+    grid+=`<text x="${pL-8}" y="${(+y+3.5).toFixed(1)}" text-anchor="end" font-size="10" font-weight="600" style="fill:var(--text2)">${money(v)}</text>`;
+  }
+  // average reference line
+  const ya=yOf(avg).toFixed(1);
+  grid+=`<line x1="${pL}" x2="${w-pR}" y1="${ya}" y2="${ya}" stroke="#d98a12" stroke-width="1" stroke-dasharray="5 4" opacity=".85"></line>`;
+  grid+=`<text x="${w-pR}" y="${(+ya-4).toFixed(1)}" text-anchor="end" font-size="9" font-weight="700" fill="#d98a12">AVG ${money(Math.round(avg))}</text>`;
+  // x-axis ticks
+  let xt='';
+  const tickN=Math.min(5,n); const used=new Set();
+  for(let k=0;k<tickN;k++){
+    const i=tickN===1?0:Math.round(k*(n-1)/(tickN-1)); if(used.has(i)) continue; used.add(i);
+    const anchor=k===0?'start':(k===tickN-1?'end':'middle');
+    xt+=`<text x="${xOf(i).toFixed(1)}" y="${h-8}" text-anchor="${anchor}" font-size="9.5" font-weight="600" style="fill:var(--text2)">${fmtD(tss[i])}</text>`;
+  }
+  // smooth pipe path
+  const cl=(v,a,b)=>Math.max(Math.min(a,b),Math.min(Math.max(a,b),v));
+  let d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1);
+  for(let i=0;i<n-1;i++){
+    const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
+    d+=` C${(p1[0]+(p2[0]-p0[0])/6).toFixed(1)},${cl(p1[1]+(p2[1]-p0[1])/6,p1[1],p2[1]).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])/6).toFixed(1)},${cl(p2[1]-(p3[1]-p1[1])/6,p1[1],p2[1]).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  const last=pts[n-1], f0=pts[0];
+  const area=d+` L${last[0].toFixed(1)},${h-pB} L${f0[0].toFixed(1)},${h-pB} Z`;
+  const dotCol=cur>=0?'#1fb577':'#e0525c';
+  const joints=n<=24?pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.2" fill="#fff" stroke="url(#tgLine)" stroke-width="1.7"></circle>`).join(''):'';
+  // high / low markers
+  const tag=(i,txt,above,c)=>{
+    const p=pts[i], tw=txt.length*5.6+12, tx=Math.min(w-pR-tw/2,Math.max(pL+tw/2,p[0])), ty=above?p[1]-24:p[1]+9;
+    return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="5.4" fill="none" stroke="${c}" stroke-width="1.8"></circle>
+      <rect x="${(tx-tw/2).toFixed(1)}" y="${ty.toFixed(1)}" width="${tw.toFixed(1)}" height="15" rx="7.5" fill="${c}"></rect>
+      <text x="${tx.toFixed(1)}" y="${(ty+10.6).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="800" fill="#fff">${txt}</text>`;
+  };
+  let marks='';
+  if(mx!==mn && n>3){ if(iMax!==n-1) marks+=tag(iMax,'HIGH',true,'#1b8a5a'); if(iMin!==n-1 && iMin!==iMax) marks+=tag(iMin,'LOW',false,'#c9444e'); }
+  // latest value bubble
+  const label=money(cur), bw=label.length*6.8+20, bx=Math.min(w-pR-bw/2,Math.max(pL+bw/2,last[0])), by=Math.max(4,last[1]-32);
+  trendCtx={pts,vals,tss,w,pL,plotW,n,h,pT,pB,fmtFull,money};
+  const chips=['1W','1M','3M','ALL'].map(r=>`<button type="button" class="${trendRange===r?'active':''}" onclick="setTrendRange('${r}')">${r==='ALL'?'All':r}</button>`).join('');
+  const tile=(lab,val,sub,c)=>`<div style="flex:1 1 45%;min-width:0;background:var(--glass);border:1px solid var(--glassBorder);border-radius:14px;padding:10px 12px">
+      <div style="font-size:10.5px;font-weight:700;letter-spacing:.8px;opacity:.65;text-transform:uppercase">${lab}</div>
+      <div style="font-size:16px;font-weight:800;margin-top:3px;${c?'color:'+c:''}">${val}</div>
+      <div style="font-size:11px;opacity:.65;margin-top:1px">${sub}</div></div>`;
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:10px">
+    <div style="min-width:0">
+      <div style="font-size:10.5px;font-weight:700;letter-spacing:1px;opacity:.65">NET WORTH</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1;margin-top:2px;word-break:break-word">${money(cur)} <span style="font-size:13px;font-weight:700;opacity:.7">AFN</span></div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="display:inline-block;font-size:12.5px;font-weight:800;color:${col(pChange)};background:${pChange>0?'rgba(31,181,119,.14)':(pChange<0?'rgba(224,82,92,.14)':'rgba(128,128,128,.14)')};border-radius:999px;padding:4px 10px">${pChange>0?'▲':(pChange<0?'▼':'●')} ${pPct==null?'—':Math.abs(pPct).toFixed(1)+'%'}</div>
+      <div style="font-size:11px;opacity:.65;margin-top:3px">over selected period</div>
+    </div>
+  </div>
+  <div class="segmented" style="margin-bottom:8px">${chips}</div>
+  <svg id="tgSvg" viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;overflow:visible;touch-action:pan-y;-webkit-tap-highlight-color:transparent" onpointermove="trendHover(event)" onpointerdown="trendHover(event)" onpointerleave="trendHoverEnd()">
+    <defs>
+      <linearGradient id="tgLine" gradientUnits="userSpaceOnUse" x1="${pL}" y1="0" x2="${w-pR}" y2="0"><stop offset="0" stop-color="#3a74e8"/><stop offset=".55" stop-color="#22b3cf"/><stop offset="1" stop-color="#1fb577"/></linearGradient>
+      <linearGradient id="tgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8fe0" stop-opacity=".30"/><stop offset="1" stop-color="#2f8fe0" stop-opacity="0"/></linearGradient>
+      <filter id="tgGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter>
+    </defs>
+    ${grid}
+    <path d="${area}" fill="url(#tgArea)"></path>
+    <path d="${d}" fill="none" stroke="url(#tgLine)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" opacity=".28" filter="url(#tgGlow)"></path>
+    <path d="${d}" fill="none" stroke="url(#tgLine)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".22"></path>
+    <path d="${d}" fill="none" stroke="url(#tgLine)" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="${d}" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".6" transform="translate(0,-1.2)"></path>
+    ${joints}${marks}
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="8" fill="${dotCol}" opacity=".22"></circle>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4.6" fill="${dotCol}" stroke="#fff" stroke-width="2"></circle>
+    <g id="tgBubble"><rect x="${(bx-bw/2).toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="20" rx="10" fill="${dotCol}"></rect>
+    <text x="${bx.toFixed(1)}" y="${(by+14).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">${label}</text></g>
+    ${xt}
+    <g id="tgCross" style="opacity:0;pointer-events:none">
+      <line id="tgCl" x1="0" x2="0" y1="${pT}" y2="${h-pB}" stroke="var(--text2)" stroke-width="1" stroke-dasharray="3 3"></line>
+      <circle id="tgCd" r="5" fill="#fff" stroke="#2f6fe0" stroke-width="2.4"></circle>
+      <rect id="tgTr" height="34" rx="9" fill="#12234a" opacity=".94"></rect>
+      <text id="tgTd" font-size="9.5" font-weight="600" fill="#cfe0ff" text-anchor="middle"></text>
+      <text id="tgTv" font-size="12" font-weight="800" fill="#fff" text-anchor="middle"></text>
+    </g>
   </svg>
-  <div class="small" style="display:flex;justify-content:space-between;margin-top:2px"><span>${snaps[0].date}</span><span>${snaps[snaps.length-1].date}</span></div>`;
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+    ${tile('Highest',money(mx)+' AFN',fmtFull(tss[iMax]),'')}
+    ${tile('Lowest',money(mn)+' AFN',fmtFull(tss[iMin]),'')}
+    ${tile('Average',money(Math.round(avg))+' AFN','Across this period','')}
+    ${tile('Period Change',sgn(pChange)+' AFN',pPct==null?'—':(pPct>=0?'+':'−')+Math.abs(pPct).toFixed(1)+'% vs start',col(pChange))}
+    ${tile('Latest Movement',lChange===0?'No change':sgn(lChange)+' AFN','vs previous record',col(lChange))}
+    ${tile('Records',String(n),fmtD(tss[0])+' – '+fmtD(tss[n-1]),'')}
+  </div>`;
+}
+function trendHover(ev){
+  const c=trendCtx; const svg=document.getElementById('tgSvg'); if(!c||!svg) return;
+  const r=svg.getBoundingClientRect(); const x=(ev.clientX-r.left)/r.width*c.w;
+  const i=Math.max(0,Math.min(c.n-1,Math.round((x-c.pL)/c.plotW*(c.n-1))));
+  const p=c.pts[i];
+  const g=document.getElementById('tgCross'); g.style.opacity=1;
+  document.getElementById('tgBubble').style.opacity=0;
+  const cl=document.getElementById('tgCl'); cl.setAttribute('x1',p[0]); cl.setAttribute('x2',p[0]);
+  const cd=document.getElementById('tgCd'); cd.setAttribute('cx',p[0]); cd.setAttribute('cy',p[1]);
+  const tw=96, tx=Math.min(c.w-6-tw/2,Math.max(6+tw/2,p[0])), ty=Math.max(0,p[1]-48);
+  const tr=document.getElementById('tgTr'); tr.setAttribute('x',tx-tw/2); tr.setAttribute('y',ty); tr.setAttribute('width',tw);
+  const td=document.getElementById('tgTd'); td.setAttribute('x',tx); td.setAttribute('y',ty+13); td.textContent=c.fmtFull(c.tss[i]);
+  const tv=document.getElementById('tgTv'); tv.setAttribute('x',tx); tv.setAttribute('y',ty+28); tv.textContent=c.money(c.vals[i])+' AFN';
+}
+function trendHoverEnd(){
+  const g=document.getElementById('tgCross'); if(g) g.style.opacity=0;
+  const b=document.getElementById('tgBubble'); if(b) b.style.opacity=1;
 }
 
 function compChartSvg(cash,inv,recv,pay){
@@ -1976,8 +2103,8 @@ async function shareStatementImage(){
     while(txt.length>1 && measure.measureText(txt+'…').width>maxW) txt=txt.slice(0,-1);
     return txt+'…';
   };
-  const HEAD=190, custH=162+((d.phone?1:0)+(d.address?1:0))*26;
-  const secH=52, itemRowH=66, payRowH=44, sumH=250;
+  const HEAD=200, custH=178+((d.phone?1:0)+(d.address?1:0))*30;
+  const secH=56, itemRowH=74, payRowH=50, sumH=252;
   const H=HEAD+custH+secH+Math.max(items.length,1)*itemRowH+(pays.length?secH+pays.length*payRowH:0)+sumH+110;
 
   const canvas=document.createElement('canvas');
@@ -2010,8 +2137,19 @@ async function shareStatementImage(){
     ctx.save(); ctx.globalAlpha=.15; ctx.beginPath(); ctx.arc(wx,wy,wsz/2,0,7); ctx.clip();
     ctx.drawImage(logo,wx-wsz/2,wy-wsz/2,wsz,wsz); ctx.restore();
   }
+  // gentle softening: background slightly blurred, a touch more behind the panels
+  let bgFrost=null;
+  try{
+    if('filter' in ctx){
+      const snap=document.createElement('canvas'); snap.width=W*S; snap.height=H*S; snap.getContext('2d').drawImage(canvas,0,0);
+      const mk=px=>{ const c=document.createElement('canvas'); c.width=W*S; c.height=H*S; const x=c.getContext('2d'); x.filter='blur('+px+'px)'; x.drawImage(snap,0,0); return c; };
+      const soft=mk(3); bgFrost=mk(6);
+      ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(soft,0,0); ctx.restore();
+    }
+  }catch(e){ bgFrost=null; }
   // glass panel helper
   const glass=(x,y,w,h,r,strong)=>{
+    if(bgFrost){ ctx.save(); rr(x,y,w,h,r); ctx.clip(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(bgFrost,0,0); ctx.restore(); }
     ctx.save();
     ctx.shadowColor='rgba(40,80,150,.22)'; ctx.shadowBlur=26; ctx.shadowOffsetY=10;
     const f=ctx.createLinearGradient(x,y,x+w*.4,y+h);
@@ -2034,63 +2172,63 @@ async function shareStatementImage(){
   if(logo){ ctx.save(); ctx.beginPath(); ctx.arc(lcx,lcy,50,0,7); ctx.clip(); ctx.drawImage(logo,lcx-50,lcy-50,100,100); ctx.restore(); }
   ctx.lineWidth=2.5; ctx.strokeStyle=GOLD; ctx.beginPath(); ctx.arc(lcx,lcy,53,0,7); ctx.stroke();
   const tx=pad+132;
-  text('STAR SHAMPOO & WASLEEN',tx,lcy-18,`700 24px ${SERIF}`,WHITE,'left','2px');
-  text('F A C T O R Y',tx,lcy+8,`600 14px ${SANS}`,GOLD);
+  text('STAR SHAMPOO & WASLEEN',tx,lcy-18,`700 26px ${SERIF}`,WHITE,'left','2px');
+  text('F A C T O R Y',tx,lcy+8,`600 15px ${SANS}`,GOLD);
   rule(tx,lcy+22,260);
-  text('ACCOUNT STATEMENT   ·   '+today(),tx,lcy+46,`600 13px ${SANS}`,SOFT,'left','1.5px');
+  text('ACCOUNT STATEMENT   ·   '+today(),tx,lcy+46,`600 14px ${SANS}`,SOFT,'left','1.5px');
 
   // ---- customer ----
   let y=HEAD;
   glass(pad,y,inner,custH-14,26);
-  text(payable?'PAYABLE TO':'PREPARED FOR',pad+30,y+36,`600 12px ${SANS}`,GOLD,'left','3px');
-  text(fit(d.name,`700 34px ${SANS}`,inner-230),pad+30,y+78,`700 34px ${SANS}`,WHITE);
+  text(payable?'PAYABLE TO':'PREPARED FOR',pad+30,y+36,`600 13px ${SANS}`,GOLD,'left','3px');
+  text(fit(d.name,`700 37px ${SANS}`,inner-230),pad+30,y+78,`700 37px ${SANS}`,WHITE);
   const bTxt=settled?'SETTLED':(overdue?'OVERDUE':'ACTIVE');
   const bCol=settled?'19,154,92':(overdue?'214,64,74':'201,130,12');
-  ctx.font=`700 13px ${SANS}`; if('letterSpacing' in ctx) ctx.letterSpacing='2px'; const bw=ctx.measureText(bTxt).width+40; if('letterSpacing' in ctx) ctx.letterSpacing='0px';
+  ctx.font=`700 14px ${SANS}`; if('letterSpacing' in ctx) ctx.letterSpacing='2px'; const bw=ctx.measureText(bTxt).width+40; if('letterSpacing' in ctx) ctx.letterSpacing='0px';
   ctx.fillStyle=`rgba(${bCol},.12)`; rr(W-pad-30-bw,y+26,bw,34,17); ctx.fill();
   ctx.lineWidth=1.3; ctx.strokeStyle=`rgba(${bCol},.9)`; rr(W-pad-30-bw,y+26,bw,34,17); ctx.stroke();
-  text(bTxt,W-pad-30-bw/2,y+48,`700 13px ${SANS}`,`rgb(${bCol})`,'center','2px');
+  text(bTxt,W-pad-30-bw/2,y+48,`700 14px ${SANS}`,`rgb(${bCol})`,'center','2px');
   rule(pad+30,y+94,inner-60);
   let ly=y+122;
   const meta=['Term: '+(d.category==='long'?'Long Term':'Short Term')+(dueDate?'    ·    Next due: '+dueDate+(overdue?' ('+daysOverdue(d)+' days overdue)':''):'')];
   if(d.phone) meta.push('Phone: '+d.phone);
   if(d.address) meta.push('Address: '+d.address);
-  meta.forEach(m=>{ text(fit(m,`400 15px ${SANS}`,inner-60),pad+30,ly,`500 16px ${SANS}`,'#12234a'); ly+=26; });
+  meta.forEach(m=>{ text(fit(m,`400 17px ${SANS}`,inner-60),pad+30,ly,`500 18px ${SANS}`,'#12234a'); ly+=30; });
   y+=custH+10;
 
   // ---- debts ----
-  text('DEBT DETAILS',pad+6,y+24,`700 13px ${SANS}`,GOLD,'left','3px');
-  text(items.length+(items.length===1?' item':' items'),W-pad-6,y+24,`600 14px ${SANS}`,SOFT,'right');
+  text('DEBT DETAILS',pad+6,y+24,`700 14px ${SANS}`,GOLD,'left','3px');
+  text(items.length+(items.length===1?' item':' items'),W-pad-6,y+24,`600 15px ${SANS}`,SOFT,'right');
   y+=secH-8;
-  if(!items.length){ text('No debts listed.',pad+26,y+34,`500 16px ${SANS}`,SOFT); y+=itemRowH; }
+  if(!items.length){ text('No debts listed.',pad+26,y+34,`500 18px ${SANS}`,SOFT); y+=itemRowH; }
   items.forEach((it,i)=>{
     const ry=y+i*itemRowH, rh=itemRowH-10;
     glass(pad,ry,inner,rh,18);
     diamond(pad+34,ry+rh/2,17,'rgba(201,150,50,.14)');
     ctx.strokeStyle='rgba(169,117,26,.75)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(pad+34,ry+rh/2-17); ctx.lineTo(pad+51,ry+rh/2); ctx.lineTo(pad+34,ry+rh/2+17); ctx.lineTo(pad+17,ry+rh/2); ctx.closePath(); ctx.stroke();
-    text(String(i+1),pad+34,ry+rh/2+5,`700 14px ${SANS}`,GOLD,'center');
-    text(fit(it.description||'Debt',`600 17px ${SANS}`,inner-250),pad+68,ry+25,`600 17px ${SANS}`,WHITE);
-    text('Given '+(it.dateGiven||'—')+(it.dueDate?'    ·    Due '+it.dueDate:''),pad+68,ry+44,`500 14px ${SANS}`,SOFT);
+    text(String(i+1),pad+34,ry+rh/2+5,`700 15px ${SANS}`,GOLD,'center');
+    text(fit(it.description||'Debt',`600 19px ${SANS}`,inner-250),pad+68,ry+25,`600 19px ${SANS}`,WHITE);
+    text('Given '+(it.dateGiven||'—')+(it.dueDate?'    ·    Due '+it.dueDate:''),pad+68,ry+44,`500 15px ${SANS}`,SOFT);
     const amt=Number(it.amount||0)+Number(it.extra||0);
-    text(money(amt),W-pad-62,ry+(it.extra?27:33),`700 20px ${SERIF}`,WHITE,'right');
-    text('AFN',W-pad-24,ry+(it.extra?27:33),`600 12px ${SANS}`,GOLD,'right','1px');
-    if(it.extra) text('incl. '+money(it.extra)+' extra',W-pad-24,ry+45,`500 13px ${SANS}`,SOFT,'right');
+    text(money(amt),W-pad-62,ry+(it.extra?27:33),`700 22px ${SERIF}`,WHITE,'right');
+    text('AFN',W-pad-24,ry+(it.extra?27:33),`600 13px ${SANS}`,GOLD,'right','1px');
+    if(it.extra) text('incl. '+money(it.extra)+' extra',W-pad-24,ry+45,`500 14px ${SANS}`,SOFT,'right');
   });
   y+=Math.max(items.length,1)*itemRowH;
 
   // ---- payments ----
   if(pays.length){
     y+=8;
-    text('PAYMENTS RECEIVED',pad+6,y+24,`700 13px ${SANS}`,GREEN,'left','3px');
+    text('PAYMENTS RECEIVED',pad+6,y+24,`700 14px ${SANS}`,GREEN,'left','3px');
     y+=secH-8;
     pays.forEach((p,i)=>{
       const ry=y+i*payRowH, rh=payRowH-8;
       glass(pad,ry,inner,rh,16);
       ctx.fillStyle='rgba(19,154,92,.95)'; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,5,0,7); ctx.fill();
       ctx.strokeStyle='rgba(19,154,92,.30)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,10,0,7); ctx.stroke();
-      text(p.date||'—',pad+52,ry+rh/2+5,`500 15px ${SANS}`,WHITE);
-      text('− '+money(p.amount),W-pad-62,ry+rh/2+6,`700 17px ${SERIF}`,GREEN,'right');
-      text('AFN',W-pad-24,ry+rh/2+6,`600 12px ${SANS}`,GREEN,'right','1px');
+      text(p.date||'—',pad+52,ry+rh/2+5,`500 17px ${SANS}`,WHITE);
+      text('− '+money(p.amount),W-pad-62,ry+rh/2+6,`700 19px ${SERIF}`,GREEN,'right');
+      text('AFN',W-pad-24,ry+rh/2+6,`600 13px ${SANS}`,GREEN,'right','1px');
     });
     y+=pays.length*payRowH;
   }
@@ -2103,25 +2241,25 @@ async function shareStatementImage(){
   const sheen=ctx.createLinearGradient(pad,y,pad+inner,y+sh);
   sheen.addColorStop(0,'rgba(255,255,255,0)'); sheen.addColorStop(.42,'rgba(255,255,255,0)'); sheen.addColorStop(.5,'rgba(255,255,255,.45)'); sheen.addColorStop(.58,'rgba(255,255,255,0)'); sheen.addColorStop(1,'rgba(255,255,255,0)');
   ctx.fillStyle=sheen; ctx.fillRect(pad,y,inner,sh); ctx.restore();
-  text('Total Amount',pad+34,y+48,`500 18px ${SANS}`,SOFT);
-  text(money(totalDue(d)),W-pad-84,y+49,`700 22px ${SERIF}`,WHITE,'right'); text('AFN',W-pad-34,y+49,`600 12px ${SANS}`,GOLD,'right','1px');
-  text('Paid So Far',pad+34,y+86,`500 18px ${SANS}`,SOFT);
-  text(money(paidSoFar(d)),W-pad-84,y+87,`700 22px ${SERIF}`,GREEN,'right'); text('AFN',W-pad-34,y+87,`600 12px ${SANS}`,GREEN,'right','1px');
+  text('Total Amount',pad+34,y+48,`500 20px ${SANS}`,SOFT);
+  text(money(totalDue(d)),W-pad-84,y+49,`700 24px ${SERIF}`,WHITE,'right'); text('AFN',W-pad-34,y+49,`600 13px ${SANS}`,GOLD,'right','1px');
+  text('Paid So Far',pad+34,y+86,`500 20px ${SANS}`,SOFT);
+  text(money(paidSoFar(d)),W-pad-84,y+87,`700 24px ${SERIF}`,GREEN,'right'); text('AFN',W-pad-34,y+87,`600 13px ${SANS}`,GREEN,'right','1px');
   rule(pad+34,y+108,inner-68);
-  text(settled?'FULLY PAID':'MONEY REMAINING',pad+34,y+158,`700 14px ${SANS}`,GOLD,'left','3px');
+  text(settled?'FULLY PAID':'MONEY REMAINING',pad+34,y+158,`700 15px ${SANS}`,GOLD,'left','3px');
   // glowing hero number
   const rem=money(remaining(d));
   ctx.save(); ctx.shadowColor='rgba(255,255,255,.9)'; ctx.shadowBlur=14;
   const hg=ctx.createLinearGradient(0,y+120,0,y+175); hg.addColorStop(0,'#12234a'); hg.addColorStop(1,'#2f6fe0');
-  ctx.font=`700 50px ${SERIF}`; ctx.fillStyle=hg; ctx.textAlign='right'; ctx.fillText(rem,W-pad-96,y+168); ctx.restore();
-  text('AFN',W-pad-34,y+166,`700 16px ${SANS}`,GOLD,'right','2px');
+  ctx.font=`700 55px ${SERIF}`; ctx.fillStyle=hg; ctx.textAlign='right'; ctx.fillText(rem,W-pad-96,y+168); ctx.restore();
+  text('AFN',W-pad-34,y+166,`700 18px ${SANS}`,GOLD,'right','2px');
   y+=sh;
 
   // ---- footer ----
   rule(W/2-120,y+34,240);
   diamond(W/2,y+35,4,GOLD);
-  text('Thank you for your business',W/2,y+66,`500 17px ${SANS}`,WHITE,'center');
-  text('STAR SHAMPOO AND WASLEEN FACTORY',W/2,y+88,`600 12px ${SANS}`,SOFT,'center','3px');
+  text('Thank you for your business',W/2,y+66,`500 19px ${SANS}`,WHITE,'center');
+  text('STAR SHAMPOO AND WASLEEN FACTORY',W/2,y+88,`600 13px ${SANS}`,SOFT,'center','3px');
 
   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
   if(!blob) return;

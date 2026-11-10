@@ -1,4 +1,4 @@
-const CACHE = 'shop-debts-v19';
+const CACHE = 'shop-debts-v22';
 const CORE = './index.html';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-star.png',
