@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shop Debts</title>
+<title>Shop Debts — Business Ledger</title>
 <script>
 // Applied synchronously, before the page paints, so switching screens never
 // shows a flash of the wrong theme/colors first.
@@ -18,13 +18,14 @@
 })();
 </script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#18284a">
+<meta name="theme-color" content="#153d32">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Shop Debts">
+<meta name="description" content="A private, offline-first business ledger for customer accounts, supplier debts, cash and inventory.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
@@ -296,6 +297,74 @@ textarea{resize:vertical;min-height:56px}
 .backupBox{margin-bottom:14px}
 .fileLbl{display:inline-block;border:1px dashed rgba(10,102,214,.5);background:rgba(10,102,214,.08);color:#0a4fa0;
   padding:10px 16px;border-radius:12px;font-weight:600;font-size:12.5px;cursor:pointer;text-align:center}
+
+/* ================================================================
+   STAR LEDGER — PREMIUM PRODUCT REDESIGN
+   Presentation-only layer. Existing IDs, storage keys, records,
+   calculations, forms, and event handlers remain intact.
+   ================================================================ */
+:root{
+  --bg:#f3f5f2; --surface:#fff; --glass:rgba(255,255,255,.86);
+  --glassBorder:rgba(28,54,43,.09); --text:#17231e; --text2:#738078;
+  --blue:#187653; --green:#16845b; --red:#c54b4b; --orange:#b88743; --navy:#153d32;
+  --sep:rgba(28,54,43,.10); --shadow:0 10px 34px rgba(22,48,37,.065),0 1px 3px rgba(22,48,37,.04);
+  --bgRadials:radial-gradient(circle at 82% 0%,rgba(209,225,210,.45),transparent 34%),radial-gradient(circle at 0% 70%,rgba(236,228,210,.35),transparent 36%);
+  --bgBase:linear-gradient(180deg,#f5f7f3,#f0f3ef 55%,#f7f6f1);
+}
+:root[data-theme="dark"]{--bg:#111915;--surface:#1b2620;--glass:rgba(29,42,34,.92);--glassBorder:rgba(220,238,224,.09);--text:#edf4ee;--text2:#a1b0a5;--sep:rgba(235,245,237,.1);--shadow:0 14px 38px rgba(0,0,0,.25);--bgBase:linear-gradient(180deg,#101a14,#141d17 60%,#191d18)}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:-.01em}
+body::before{filter:none;opacity:.9}
+.app{max-width:1480px;margin:0 auto;padding:22px 28px 54px;display:grid;grid-template-columns:238px minmax(0,1fr);column-gap:26px;align-items:start}
+.app>header{grid-column:1/-1;grid-row:1;position:sticky;top:10px;margin-bottom:20px;padding:15px 20px;border-radius:22px;background:rgba(255,255,255,.88);border:1px solid rgba(255,255,255,.95);box-shadow:0 8px 30px rgba(26,53,39,.07);backdrop-filter:none;-webkit-backdrop-filter:none;min-height:76px}
+:root[data-theme="dark"] .app>header{background:rgba(27,38,32,.94);border-color:var(--glassBorder)}
+.title{font-size:19px;font-weight:800;letter-spacing:-.65px;gap:11px}.title img{width:42px;height:42px;animation:none;box-shadow:0 3px 12px rgba(21,61,50,.2)}
+.brandPill{font-size:9px;letter-spacing:1.5px;font-weight:800;color:#96713b;background:#f3ecdf;border:1px solid #e9ddc8;border-radius:6px;padding:4px 6px;margin-left:2px}
+.sub{font-size:11.5px;letter-spacing:.15px;margin:3px 0 0 53px;color:var(--text2)}
+.syncBadge{margin:5px 0 0 53px!important;font-size:10px!important;letter-spacing:.2px}
+.app>nav{grid-column:1;grid-row:2 / span 30;position:sticky;top:112px;align-self:start;display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 10px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);border-radius:22px;box-shadow:var(--shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-theme="dark"] .app>nav{background:rgba(27,38,32,.86);border-color:var(--glassBorder)}
+nav button{flex:0 0 auto!important;justify-content:flex-start!important;text-align:left!important;width:100%;padding:12px 13px!important;border:1px solid transparent!important;border-radius:13px!important;background:transparent!important;box-shadow:none!important;color:var(--text2)!important;font-size:12.5px!important;font-weight:650!important;gap:11px!important;transition:all .18s ease!important}
+nav button .iconBadge{width:30px;height:30px;min-width:30px;font-size:13px;box-shadow:none}
+nav button.navActive{background:#e8f1eb!important;color:#174d39!important;border-color:#dce9df!important;box-shadow:inset 3px 0 0 #267553!important}
+:root[data-theme="dark"] nav button.navActive{background:#243b2d!important;color:#c8ead2!important;border-color:#304b39!important;box-shadow:inset 3px 0 0 #67b985!important}
+nav button:not(.navActive):hover{background:rgba(31,104,72,.07)!important;color:var(--text)!important}
+.app>section.view{grid-column:2;grid-row:auto;min-width:0;width:100%;max-width:1080px;margin:0 auto;}
+.app>section.view:not(.active){display:none}
+.app>section.view.active{display:block}
+.glass,.section,.card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--glass)!important;border:1px solid var(--glassBorder)!important;box-shadow:var(--shadow)!important}
+.glass::before{display:none!important}
+.section{padding:22px!important;border-radius:20px!important;margin:0 0 17px!important}
+.section h2{font-size:15px!important;font-weight:780!important;letter-spacing:-.25px!important;margin-bottom:16px!important;padding-left:13px!important}
+.section h2::before{background:linear-gradient(180deg,#267b56,#c5a16a)!important;box-shadow:none!important;width:3px!important}
+.cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 17px}
+.card{padding:19px 17px!important;border-radius:18px!important;min-height:105px;gap:13px!important}
+.card .label{font-size:10px!important;text-transform:uppercase;letter-spacing:.85px;font-weight:750!important;color:var(--text2)!important}
+.card .value{font-size:clamp(17px,2vw,23px)!important;font-weight:820!important;letter-spacing:-.7px!important;margin-top:7px;overflow-wrap:anywhere}
+.card .hint{font-size:9.5px!important;line-height:1.4;margin-top:4px}
+.iconBadge{width:38px;height:38px;min-width:38px;border-radius:13px!important;font-size:16px!important;box-shadow:none!important}
+.iconBadge.green{background:#e5f2e9!important;color:#26754e!important}.iconBadge.red{background:#f8e9e7!important;color:#b74e4b!important}.iconBadge.orange{background:#f5eee1!important;color:#98703a!important}.iconBadge.navy{background:#e9efeb!important;color:#305e4a!important}
+.welcomePanel{position:relative;overflow:hidden;min-height:208px;padding:27px 30px;margin:0 0 15px;border-radius:23px;background:linear-gradient(112deg,#153d32 0%,#1c5942 58%,#2d7252 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;box-shadow:0 14px 34px rgba(21,61,50,.16)}
+.welcomePanel:after{content:"";position:absolute;width:390px;height:390px;border:1px solid rgba(255,255,255,.11);border-radius:50%;right:-90px;top:-205px;box-shadow:0 0 0 28px rgba(255,255,255,.025),0 0 0 62px rgba(255,255,255,.02)}
+.welcomeCopy{position:relative;z-index:1;max-width:560px}.welcomeEyebrow{font-size:9px;font-weight:800;letter-spacing:2px;color:#c9dfd0;display:flex;align-items:center;gap:8px}.liveDot{width:7px;height:7px;border-radius:50%;background:#a8d8a9;box-shadow:0 0 0 4px rgba(168,216,169,.13)}
+.welcomePanel h1{font-size:clamp(26px,4vw,39px);line-height:1.02;letter-spacing:-1.6px;margin:15px 0 10px;font-weight:800}.welcomePanel h1 em{font-style:normal;color:#d8c49d}.welcomePanel p{margin:0;max-width:420px;font-size:12px;line-height:1.7;color:rgba(255,255,255,.72)}
+.welcomeMark{position:relative;z-index:1;margin:0 6% 0 20px;text-align:center}.markOuter{width:112px;height:112px;border:1px solid rgba(231,216,181,.5);border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 9px rgba(255,255,255,.035),inset 0 0 28px rgba(255,255,255,.06)}.markInner{width:78px;height:78px;border:1px solid rgba(231,216,181,.65);border-radius:50%;display:grid;place-items:center;color:#e5d4ae;font-family:Georgia,serif;font-size:52px;font-style:italic}.markCaption{font-size:8px;letter-spacing:2px;font-weight:800;color:#d7c49e;margin-top:12px}
+.quickActions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 17px}.quickAction{border:1px solid var(--glassBorder);background:var(--glass);color:var(--text);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer;box-shadow:var(--shadow);font:inherit;min-width:0;transition:transform .18s,border-color .18s}.quickAction:active{transform:scale(.98)}.quickAction .qaIcon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:#edf3ee;color:#286447;display:grid;place-items:center;font-size:21px;font-weight:500}.quickAction b{display:block;font-size:11.5px;font-weight:800}.quickAction small{display:block;color:var(--text2);font-size:9.5px;margin-top:3px;white-space:nowrap}.quickAction.qaPrimary{border-color:#cbded0;background:#f4f8f4!important}.quickAction.qaPrimary .qaIcon{background:#1c5b40;color:#fff}
+.debtCard,.alphaRow{border-radius:16px!important;border:1px solid var(--glassBorder)!important;background:var(--glass)!important;box-shadow:0 4px 16px rgba(25,52,37,.045)!important;padding:17px!important;margin-bottom:10px!important}
+.debtName{font-size:14px!important;font-weight:780!important}.debtAmt .rem{font-size:20px!important;letter-spacing:-.5px}.triCell{border-radius:11px!important;background:rgba(110,140,120,.07)!important;padding:9px!important}.triCell .tv{font-size:13px!important;font-weight:800!important}
+.searchBar input,input,textarea,select{border-radius:12px!important;border:1px solid var(--glassBorder)!important;background:rgba(255,255,255,.78)!important;color:#1b2921!important;min-height:42px;padding:11px 13px!important;box-shadow:none!important;font:inherit}
+:root[data-theme="dark"] .searchBar input,:root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select{background:#121c16!important;color:var(--text)!important;border-color:var(--glassBorder)!important}
+button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!important;border:1px solid #174b37!important;border-radius:12px!important;box-shadow:0 5px 13px rgba(21,77,53,.17)!important;font-weight:750!important}
+.secondaryBtn,.dangerBtn,.mbSecondary,.fileLbl{border-radius:12px!important;font-weight:700!important}
+.chip{border-radius:10px!important;padding:8px 13px!important;font-weight:700!important}.chipActive{background:#e6f0e8!important;color:#205d40!important;border-color:#cfe1d3!important}
+.badge{padding:4px 9px!important;border-radius:7px!important;letter-spacing:.1px}
+.modalBox{border-radius:22px!important;background:var(--surface)!important;border:1px solid var(--glassBorder)!important;box-shadow:0 24px 80px rgba(0,0,0,.22)!important}
+.fabBtn{box-shadow:0 10px 26px rgba(21,77,53,.25)!important}
+#backupBanner{border-radius:14px!important}
+/* keep the app comfortable on tablets and phones */
+@media(max-width:900px){.app{display:block;max-width:760px;padding:12px 14px 34px}.app>header{top:6px;margin-bottom:12px}.app>nav{position:sticky;top:91px;z-index:18;flex-direction:row;overflow-x:auto;flex-wrap:nowrap;margin:0 -2px 15px;padding:7px;border-radius:15px;gap:5px;scrollbar-width:none}.app>nav::-webkit-scrollbar{display:none}nav button{width:auto!important;flex:0 0 auto!important;justify-content:center!important;padding:9px 12px!important;font-size:11px!important}nav button .iconBadge{width:25px;height:25px;min-width:25px;font-size:11px}.app>section.view{max-width:none}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.quickActions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.app{padding:9px 10px 30px}.app>header{padding:11px 12px;border-radius:17px;min-height:66px}.title{font-size:16px}.title img{width:36px;height:36px}.sub,.syncBadge{margin-left:47px!important}.app>header .primary{padding:10px 11px!important;font-size:11px!important}.app>header .secondaryBtn{padding:9px 10px!important}.app>nav{top:79px;margin-bottom:12px}.welcomePanel{min-height:190px;padding:22px 20px;border-radius:19px}.welcomePanel h1{font-size:29px}.welcomePanel p{font-size:10.5px;max-width:270px}.welcomeMark{margin:0 0 0 8px}.markOuter{width:70px;height:70px;box-shadow:0 0 0 5px rgba(255,255,255,.035)}.markInner{width:50px;height:50px;font-size:34px}.markCaption{font-size:6px;letter-spacing:1px}.quickActions{gap:7px}.quickAction{padding:10px 9px;gap:8px;border-radius:13px}.quickAction .qaIcon{width:29px;height:29px;flex-basis:29px;font-size:18px}.quickAction b{font-size:10.5px}.quickAction small{font-size:8.5px}.cards{gap:8px}.card{padding:13px 11px!important;min-height:92px;gap:8px!important}.card .value{font-size:16px!important}.card .label{font-size:8.5px!important;letter-spacing:.5px}.iconBadge{width:30px;height:30px;min-width:30px;border-radius:10px!important;font-size:13px!important}.section{padding:15px!important;border-radius:16px!important}.section h2{font-size:14px!important}.debtCard{padding:13px!important}.formGrid{gap:10px!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
 </style>
 </head>
 <body>
@@ -428,7 +497,7 @@ textarea{resize:vertical;min-height:56px}
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
 <header class="glass">
-  <div><div class="title"><img src="logo-star.png" alt=""> Shop Debts</div><div class="sub">Who owes you, who you owe</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
+  <div><div class="title"><img src="logo-star.png" alt=""> <span>Shop Debts</span><span class="brandPill">LEDGER</span></div><div class="sub">Your business, clearly in control</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
   <div style="display:flex;gap:8px;align-items:center">
     <button type="button" class="secondaryBtn" style="padding:11px 13px;font-size:15px" onclick="openSearchModal()" aria-label="Search">🔍</button>
     <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
@@ -447,6 +516,16 @@ textarea{resize:vertical;min-height:56px}
 </nav>
 
 <section id="dashboard" class="view active">
+<div class="welcomePanel">
+  <div class="welcomeCopy"><div class="welcomeEyebrow"><span class="liveDot"></span> BUSINESS OVERVIEW</div><h1>Your numbers.<br><em>Under control.</em></h1><p>Track what comes in, what goes out, and what your business is owed — all in one place.</p></div>
+  <div class="welcomeMark" aria-hidden="true"><div class="markOuter"><div class="markInner">S</div></div><div class="markCaption">STAR LEDGER</div></div>
+</div>
+<div class="quickActions" aria-label="Quick actions">
+  <button type="button" class="quickAction qaPrimary" onclick="openAddForm()"><span class="qaIcon">＋</span><span><b>Add account</b><small>New customer or supplier</small></span></button>
+  <button type="button" class="quickAction" onclick="openCashModal('in')"><span class="qaIcon">↗</span><span><b>Cash received</b><small>Record money in</small></span></button>
+  <button type="button" class="quickAction" onclick="openCashModal('out')"><span class="qaIcon">↙</span><span><b>Cash paid</b><small>Record money out</small></span></button>
+  <button type="button" class="quickAction" onclick="openSearchModal()"><span class="qaIcon">⌕</span><span><b>Find anything</b><small>Search your records</small></span></button>
+</div>
 <div id="backupBanner" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:14px;background:rgba(201,121,26,.14);border:1px solid rgba(201,121,26,.35);color:#8a5a13;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px">
   <span id="backupBannerText">⚠️ Backup is overdue</span>
   <button type="button" class="mbPrimary" style="padding:7px 12px;font-size:12px" onclick="exportBackupExcel()">Backup Now</button>
