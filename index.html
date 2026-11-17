@@ -275,11 +275,21 @@ textarea{resize:vertical;min-height:56px}
 .payHistItem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
 .payDelBtn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:#a52530;line-height:1}
 .payDelBtn:active{opacity:.6}
-.alphaHeader{font-size:12px;font-weight:800;color:var(--text2);padding:10px 4px 4px;letter-spacing:.04em}
-.alphaRow{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:6px;border-radius:14px;
-  background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.55);cursor:pointer}
-.alphaRow:active{background:rgba(255,255,255,.6)}
-.alphaName{flex:1;min-width:0;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alphaHeader{font-size:14px;font-weight:800;color:var(--text2);padding:14px 6px 8px;letter-spacing:.06em}
+.alphaRow{display:block;padding:16px 16px 14px;margin-bottom:16px;border-radius:20px;
+  background:var(--glass);border:1px solid var(--glassBorder);box-shadow:0 6px 18px rgba(24,40,74,.10);cursor:pointer}
+.alphaRow:active{transform:scale(.99)}
+.alphaTop{display:flex;align-items:center;gap:8px}
+.alphaName{flex:1;min-width:0;font-weight:800;font-size:19px;line-height:1.25;word-break:break-word}
+.triRow{display:flex;gap:8px;margin-top:12px}
+.triCell{flex:1;min-width:0;border-radius:14px;padding:9px 10px;text-align:center}
+.triCell .tl{font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;opacity:.85}
+.triCell .tv{font-size:15.5px;font-weight:800;margin-top:3px;word-break:break-word}
+.triTotal{background:rgba(47,91,183,.14);color:var(--text)}
+.triRecv{background:rgba(31,181,119,.16);color:#0f7f4d}
+.triPend{background:rgba(224,82,92,.16);color:#c0323d}
+:root[data-theme="dark"] .triRecv{color:#5fe0a6}
+:root[data-theme="dark"] .triPend{color:#ff8a93}
 .alphaSub{font-size:12px;color:var(--text2);white-space:nowrap}
 .alphaEdit{background:none;border:none;font-size:15px;padding:4px 6px;cursor:pointer;line-height:1}
 .payHistItem:last-child{border-bottom:none}
@@ -1254,6 +1264,13 @@ async function updateBackupBanner(){
     banner.style.display='none';
   }
 }
+function triCells(d){
+  return `<div class="triRow">
+    <div class="triCell triTotal"><div class="tl">Total</div><div class="tv">${money(totalDue(d))}</div></div>
+    <div class="triCell triRecv"><div class="tl">Received</div><div class="tv">${money(paidSoFar(d))}</div></div>
+    <div class="triCell triPend"><div class="tl">Pending</div><div class="tv">${money(remaining(d))}</div></div>
+  </div>`;
+}
 function renderAlphaList(){
   const el=document.getElementById('alphaList'); if(!el) return;
   const q=(document.getElementById('alphaSearch')?.value||'').trim().toLowerCase();
@@ -1267,12 +1284,13 @@ function renderAlphaList(){
     if(!/[A-Z]/.test(letter)) letter='#';
     if(letter!==lastLetter){ html+=`<div class="alphaHeader">${letter}</div>`; lastLetter=letter; }
     const dirIcon=d.direction==='payable'?'🔴':'🟢';
-    const status=isSettled(d)?'Settled':`${money(remaining(d))} AFN`;
     html+=`<div class="alphaRow" onclick="openStatement('${d.id}')">
-      <div class="alphaName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
-      <div class="alphaSub">${status}</div>
-      <button type="button" class="alphaEdit" onclick="event.stopPropagation();openEditForm('${d.id}')" aria-label="Edit">✏️</button>
-      <button type="button" class="alphaEdit" onclick="event.stopPropagation();deleteDebt('${d.id}')" aria-label="Delete" style="color:#a52530">🗑</button>
+      <div class="alphaTop">
+        <div class="alphaName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
+        <button type="button" class="alphaEdit" onclick="event.stopPropagation();openEditForm('${d.id}')" aria-label="Edit">✏️</button>
+        <button type="button" class="alphaEdit" onclick="event.stopPropagation();deleteDebt('${d.id}')" aria-label="Delete" style="color:#a52530">🗑</button>
+      </div>
+      ${triCells(d)}
     </div>`;
   });
   el.innerHTML=html;
@@ -1730,11 +1748,11 @@ function debtCardHtml(d,settledView){
     </div>`;
   }
   return `<div class="debtCard glass">
-    <div class="debtTop">
-      <div><div class="debtName" onclick="openStatement('${d.id}')">${escapeHtml(d.name)}</div>${phone}</div>
-      <div class="debtAmt"><div class="rem ${remClass}">${money(rem)} AFN</div><div class="of">of ${money(totalDue(d))} AFN${paid>0?' &middot; paid '+money(paid):''}</div></div>
+    <div class="debtTop" style="cursor:pointer" onclick="openStatement('${d.id}')">
+      <div style="min-width:0"><div class="debtName" style="font-size:19px;font-weight:800;line-height:1.25">${escapeHtml(d.name)}</div>${phone}</div>
     </div>
-    <div class="debtMeta">
+    <div style="cursor:pointer" onclick="openStatement('${d.id}')">${triCells(d)}</div>
+    <div class="debtMeta" style="cursor:pointer" onclick="openStatement('${d.id}')">
       ${dirBadge} ${termBadge} ${overdueBadge} ${dueSoonBadge} ${settledBadge}
       <span>${items.length} debt${items.length===1?'':'s'}</span>
       <span>Given: ${dateGiven||'—'}</span>
@@ -2015,26 +2033,28 @@ function openStatement(id){
   pays.forEach(p=>{ if(!p.id){ p.id=uid(); paysChanged=true; } });
   if(paysChanged) save(d);
   const payHtml=pays.length
-    ? pays.map(p=>`<div class="payHistItem"><span>${p.date}</span><span>${money(p.amount)} AFN</span><button type="button" class="payDelBtn" onclick="deletePayment('${d.id}','${p.id}')" aria-label="Delete payment">🗑</button></div>`).join('')
+    ? pays.map(p=>`<div class="payHistItem"><span style="font-weight:600">${p.date}</span><span style="color:#139a5c;font-weight:800;font-size:14px">+ ${money(p.amount)} AFN</span><button type="button" class="payDelBtn" onclick="deletePayment('${d.id}','${p.id}')" aria-label="Delete payment">🗑</button></div>`).join('')
     : '<div class="small">No payments recorded yet.</div>';
   const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
   document.getElementById('stBody').innerHTML=`
-    <div style="text-align:right;font-size:10.5px;line-height:1.4;opacity:.62;margin:-6px 0 10px">
-      ${escapeHtml(d.name)}${d.phone?' · '+escapeHtml(d.phone):''}${d.address?'<br>'+escapeHtml(d.address):''}
+    <div style="font-size:26px;font-weight:800;line-height:1.2;word-break:break-word">${escapeHtml(d.name)}</div>
+    <div style="font-size:10.5px;line-height:1.4;opacity:.6;margin:3px 0 12px">${d.phone?escapeHtml(d.phone):''}${d.phone&&d.address?' · ':''}${d.address?escapeHtml(d.address):''}</div>
+    <div style="border-radius:20px;padding:16px 18px;color:#fff;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 8px 20px rgba(24,40,74,.25);margin-bottom:10px">
+      <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.9">TOTAL</div>
+      <div style="font-size:32px;font-weight:800;margin-top:4px;line-height:1.1;word-break:break-word">${money(totalDue(d))} <span style="font-size:14px;opacity:.85">AFN</span></div>
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:8px">
-      <div style="flex:1;border-radius:20px;padding:20px 14px;color:#fff;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 8px 20px rgba(24,40,74,.25)">
-        <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;opacity:.9">${isSettled(d)?'FULLY PAID':'REMAINING'}</div>
-        <div style="font-size:30px;font-weight:800;margin-top:8px;line-height:1.1;word-break:break-word">${money(remaining(d))}</div>
-        <div style="font-size:12px;font-weight:700;opacity:.9;margin-top:2px">AFN</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div style="flex:1;border-radius:20px;padding:18px 14px;color:#fff;background:linear-gradient(135deg,#0f7f4d,#1fb577);box-shadow:0 8px 20px rgba(15,127,77,.25)">
+        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.95">RECEIVED</div>
+        <div style="font-size:28px;font-weight:800;margin-top:6px;line-height:1.1;word-break:break-word">${money(paidSoFar(d))}</div>
+        <div style="font-size:12px;font-weight:700;opacity:.95;margin-top:2px">AFN</div>
       </div>
-      <div style="flex:1;border-radius:20px;padding:20px 14px;color:#fff;background:linear-gradient(135deg,#0f7f4d,#1fb577);box-shadow:0 8px 20px rgba(15,127,77,.25)">
-        <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;opacity:.95">RECEIVED</div>
-        <div style="font-size:30px;font-weight:800;margin-top:8px;line-height:1.1;word-break:break-word">${money(paidSoFar(d))}</div>
+      <div style="flex:1;border-radius:20px;padding:18px 14px;color:#fff;background:linear-gradient(135deg,#b3202c,#e0525c);box-shadow:0 8px 20px rgba(192,50,61,.28)">
+        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.95">${isSettled(d)?'FULLY PAID':'PENDING'}</div>
+        <div style="font-size:28px;font-weight:800;margin-top:6px;line-height:1.1;word-break:break-word">${money(remaining(d))}</div>
         <div style="font-size:12px;font-weight:700;opacity:.95;margin-top:2px">AFN</div>
       </div>
     </div>
-    <div class="statRow" style="margin-bottom:12px"><span>All the money (Total)</span><b>${money(totalDue(d))} AFN</b></div>
     <div class="small" style="opacity:.7;margin-bottom:6px">${d.direction==='payable'?'🔴 You owe them':'🟢 They owe you'} · ${d.category==='long'?'Long Term':'Short Term'}</div>
     <div class="statRow"><span>Date Given</span><b>${dateGiven||'—'}</b></div>
     ${dueDate?`<div class="statRow"><span>Due Date</span><b>${dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
