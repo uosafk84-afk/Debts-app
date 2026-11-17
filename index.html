@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shop Debts — Business Ledger</title>
+<title>Shop Debts</title>
 <script>
 // Applied synchronously, before the page paints, so switching screens never
 // shows a flash of the wrong theme/colors first.
@@ -18,14 +18,13 @@
 })();
 </script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#153d32">
+<meta name="theme-color" content="#18284a">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Shop Debts">
-<meta name="description" content="A private, offline-first business ledger for customer accounts, supplier debts, cash and inventory.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
@@ -122,15 +121,6 @@ header{padding:14px 18px;display:flex;justify-content:space-between;align-items:
 @keyframes logoGlow{0%,100%{box-shadow:0 3px 8px rgba(0,0,0,.2),0 0 0 2px rgba(90,160,255,.35),0 0 14px rgba(60,140,255,.45)}50%{box-shadow:0 3px 8px rgba(0,0,0,.2),0 0 0 3px rgba(255,180,70,.45),0 0 20px rgba(255,160,40,.55)}}
 .title img{width:36px;height:36px;border-radius:50%;display:block;object-fit:cover;animation:logoGlow 3.5s ease-in-out infinite}
 .sub{font-size:11.5px;color:var(--text2);margin-top:2px;font-weight:500}
-nav{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
-nav button{border:1px solid var(--glassBorder);background:var(--glass);backdrop-filter:saturate(160%);
-  color:var(--text2);padding:10px 14px;border-radius:999px;font-weight:600;
-  font-size:12.5px;cursor:pointer;transition:background-color .2s var(--ease),color .2s var(--ease),transform .12s var(--spring);
-  flex:1 1 auto;text-align:center;white-space:nowrap;box-shadow:0 4px 12px rgba(24,40,74,.08),inset 0 1px 0 rgba(255,255,255,.7);
-  display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit}
-nav button:active{transform:scale(.95)}
-nav button.navActive{background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;border-color:transparent;
-  box-shadow:0 6px 18px rgba(24,40,74,.4),0 0 16px rgba(90,160,255,.5),inset 0 1px 0 rgba(255,255,255,.4)}
 .segmented{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .segmented button{flex:1 1 auto;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text2);
   padding:10px 12px;border-radius:14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;
@@ -276,6 +266,105 @@ textarea{resize:vertical;min-height:56px}
 .payHistItem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;color:var(--text2);border-bottom:1px dashed var(--sep)}
 .payDelBtn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:#a52530;line-height:1}
 .payDelBtn:active{opacity:.6}
+/* ---- refined customer UI ---- */
+:root{--posC:#139a5c;--negC:#d6404a}
+:root[data-theme="dark"]{--posC:#5fe0a6;--negC:#ff7a84}
+.avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#4a82f0,#25b5cc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;flex-shrink:0;box-shadow:0 6px 14px rgba(58,116,232,.28)}
+.avatar.lg{width:56px;height:56px;font-size:24px}
+.cHero{background:var(--glass);border:1px solid var(--glassBorder);border-radius:26px;padding:20px 18px 18px;box-shadow:0 14px 34px rgba(24,40,74,.10)}
+.cTop{display:flex;align-items:center;gap:14px}
+.cName{font-size:22px;font-weight:600;letter-spacing:-.3px;line-height:1.2;word-break:break-word}
+.cMeta{font-size:12px;opacity:.58;margin-top:3px;font-weight:400}
+.cChips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+.cChip{font-size:11px;font-weight:500;padding:4px 10px;border-radius:999px;background:rgba(120,140,180,.14);color:var(--text2)}
+.cChip.ok{background:rgba(31,181,119,.14);color:var(--posC)}
+.cChip.bad{background:rgba(224,82,92,.14);color:var(--negC)}
+.cChip.warn{background:rgba(217,138,18,.15);color:#b0720d}
+.balLbl{font-size:11px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;opacity:.55;margin-top:16px}
+.balVal{font-size:40px;font-weight:600;letter-spacing:-1.2px;line-height:1.1;margin-top:4px;color:var(--negC);word-break:break-word}
+.balVal.paid{color:var(--posC)}
+.balVal small{font-size:14px;font-weight:500;letter-spacing:0;opacity:.7;margin-left:4px}
+.prog{height:6px;border-radius:99px;background:rgba(120,140,180,.18);overflow:hidden;margin-top:14px}
+.prog>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#25b5cc,#1fb577)}
+.progCap{display:flex;justify-content:space-between;font-size:11.5px;opacity:.6;margin-top:6px}
+.tri3{display:grid;grid-template-columns:repeat(3,1fr);margin-top:16px;border-top:1px solid var(--sep);padding-top:14px}
+.tri3>div{text-align:center;padding:0 4px}
+.tri3>div+div{border-left:1px solid var(--sep)}
+.tri3 .tl{font-size:10.5px;font-weight:500;letter-spacing:.9px;text-transform:uppercase;opacity:.55}
+.tri3 .tv{font-size:17px;font-weight:600;margin-top:4px;letter-spacing:-.3px;word-break:break-word}
+.tri3 .pos{color:var(--posC)} .tri3 .neg{color:var(--negC)}
+.qa{display:flex;gap:8px;margin:18px 0 6px}
+.qaBtn{flex:1;background:none;border:none;color:var(--text);cursor:pointer;padding:0;font-size:11.5px;font-weight:500}
+.qaIcon{width:54px;height:54px;border-radius:19px;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--glass);border:1px solid var(--glassBorder);box-shadow:0 6px 16px rgba(24,40,74,.08);transition:transform .15s}
+.qaBtn:active .qaIcon{transform:scale(.92)}
+.qaBtn.main .qaIcon{background:linear-gradient(135deg,#1aa874,#25b5cc);border-color:transparent;box-shadow:0 8px 20px rgba(26,168,116,.35)}
+.cSec{display:flex;align-items:baseline;justify-content:space-between;margin:22px 4px 8px;font-size:11.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;opacity:.6}
+.cPanel{background:var(--glass);border:1px solid var(--glassBorder);border-radius:22px;padding:4px 14px;box-shadow:0 8px 22px rgba(24,40,74,.07)}
+.cRow{display:flex;align-items:center;gap:12px;padding:13px 0}
+.cRow+.cRow{border-top:1px solid var(--sep)}
+.cIco{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:rgba(58,116,232,.13);color:#3a74e8}
+.cIco.in{background:rgba(31,181,119,.15);color:var(--posC);font-weight:700}
+.cMain{flex:1;min-width:0}
+.cTitle{font-size:14.5px;font-weight:500;line-height:1.3;word-break:break-word}
+.cSub{font-size:12px;opacity:.58;margin-top:2px;word-break:break-word}
+.cAmt{font-size:15px;font-weight:600;white-space:nowrap;letter-spacing:-.2px}
+.cAmt.in{color:var(--posC)}
+.cMini{display:flex;gap:2px;flex-shrink:0}
+.cMini button{background:none;border:none;font-size:14px;padding:6px;opacity:.6;cursor:pointer;border-radius:8px}
+.cMini button:active{background:rgba(120,140,180,.2)}
+.cEmpty{padding:18px 4px;text-align:center;font-size:13px;opacity:.55}
+.cAdd{display:block;width:100%;background:none;border:none;border-top:1px solid var(--sep);padding:13px 0;font-size:13.5px;font-weight:500;color:#3a74e8;cursor:pointer}
+.cDanger{display:block;margin:26px auto 4px;background:none;border:none;color:var(--negC);font-size:13px;font-weight:500;opacity:.85;cursor:pointer;padding:8px 14px}
+.stBottom{display:flex;gap:10px;margin-top:18px}
+.stBottom button{flex:1;border-radius:14px;padding:12px 8px;font-size:13.5px;font-weight:500;cursor:pointer;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text)}
+.stBottom button.pri{background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;border-color:transparent}
+.cList{display:block;padding:15px 16px 14px;margin-bottom:14px;border-radius:22px;background:var(--glass);border:1px solid var(--glassBorder);box-shadow:0 8px 22px rgba(24,40,74,.08);cursor:pointer}
+.cList:active{transform:scale(.99)}
+.cList .cTop{gap:12px}
+.cList .cName{font-size:18px;flex:1}
+.cList .chev{font-size:22px;opacity:.35;font-weight:300}
+.cList .tri3{margin-top:12px;padding-top:11px}
+.cList .tri3 .tv{font-size:15.5px}
+.alphaHeader{font-size:12px !important;font-weight:600 !important;letter-spacing:1.5px !important;opacity:.55;padding:12px 8px 8px !important}
+.stChips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.stPill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--glass);border:1px solid var(--glassBorder);color:var(--text)}
+.stPill.ok{background:rgba(31,181,119,.16);color:#0f7f4d;border-color:rgba(31,181,119,.4)}
+.stPill.bad{background:rgba(224,82,92,.16);color:#c0323d;border-color:rgba(224,82,92,.4)}
+.stPill.warn{background:rgba(217,138,18,.16);color:#a86608;border-color:rgba(217,138,18,.4)}
+.infoGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.infoCell{background:var(--glass);border:1px solid var(--glassBorder);border-radius:14px;padding:10px 12px}
+.infoCell .il{font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;opacity:.6}
+.infoCell .iv{font-size:14px;font-weight:700;margin-top:3px}
+.stSec{display:flex;align-items:center;gap:8px;margin:20px 2px 10px;font-size:14px;font-weight:800;letter-spacing:.3px}
+.stSec:before{content:"";width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,#3a74e8,#1fb577)}
+.stSec .cnt{margin-left:auto;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--glassBorder);opacity:.9}
+.itemCard{background:var(--glass);border:1px solid var(--glassBorder);border-left:4px solid #3a74e8;border-radius:16px;padding:13px 14px;margin-bottom:10px;box-shadow:0 4px 12px rgba(24,40,74,.08)}
+.itemCard .itTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.itemCard .itName{font-weight:800;font-size:15px;line-height:1.3;word-break:break-word}
+.itemCard .itDate{font-size:11.5px;opacity:.65;margin-top:3px}
+.itemCard .itAmt{font-weight:800;font-size:16px;white-space:nowrap}
+.itemCard .itBtns{display:flex;gap:8px;margin-top:10px}
+.miniBtn{flex:1;border-radius:10px;padding:7px 10px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid rgba(10,102,214,.4);background:rgba(10,102,214,.09);color:#0a4fa0}
+.miniBtn.red{border-color:rgba(214,64,74,.45);background:rgba(214,64,74,.10);color:#a52530}
+:root[data-theme="dark"] .miniBtn{color:#9cc4ff}
+:root[data-theme="dark"] .miniBtn.red{color:#ff8a93}
+.payItem{display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--glassBorder);border-left:4px solid #1fb577;border-radius:16px;padding:11px 12px;margin-bottom:8px}
+.payItem .pDot{width:34px;height:34px;border-radius:50%;background:rgba(31,181,119,.18);color:#139a5c;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.payItem .pMain{flex:1;min-width:0}
+.payItem .pDate{font-weight:700;font-size:13.5px}
+.payItem .pNote{font-size:12px;opacity:.7;margin-top:2px;word-break:break-word}
+.payItem .pAmt{font-weight:800;font-size:15.5px;color:#139a5c;white-space:nowrap}
+.actPrimary{width:100%;border:none;border-radius:16px;padding:15px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(135deg,#0f7f4d,#1fb577);box-shadow:0 8px 20px rgba(15,127,77,.28)}
+.actPrimary:active{transform:scale(.98)}
+.actGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.actBtn{border-radius:14px;padding:12px 8px;font-size:13.5px;font-weight:700;cursor:pointer;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text)}
+.actBtn:active{transform:scale(.97)}
+.actBtn.settle{border-color:rgba(31,157,85,.5);background:rgba(31,157,85,.12);color:#166b3a}
+:root[data-theme="dark"] .actBtn.settle{color:#5fe0a6}
+.dangerZone{margin-top:22px;border:1px dashed rgba(214,64,74,.55);border-radius:16px;padding:12px 14px;background:rgba(214,64,74,.06)}
+.dangerZone .dzt{font-size:11px;font-weight:800;letter-spacing:1px;color:#c0323d;margin-bottom:8px}
+.dangerZone button{width:100%;border:1px solid rgba(214,64,74,.55);background:rgba(214,64,74,.12);color:#b52532;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer}
+:root[data-theme="dark"] .dangerZone button,:root[data-theme="dark"] .dangerZone .dzt{color:#ff8a93}
 .alphaHeader{font-size:14px;font-weight:800;color:var(--text2);padding:14px 6px 8px;letter-spacing:.06em}
 .alphaRow{display:block;padding:16px 16px 14px;margin-bottom:16px;border-radius:20px;
   background:var(--glass);border:1px solid var(--glassBorder);box-shadow:0 6px 18px rgba(24,40,74,.10);cursor:pointer}
@@ -297,74 +386,255 @@ textarea{resize:vertical;min-height:56px}
 .backupBox{margin-bottom:14px}
 .fileLbl{display:inline-block;border:1px dashed rgba(10,102,214,.5);background:rgba(10,102,214,.08);color:#0a4fa0;
   padding:10px 16px;border-radius:12px;font-weight:600;font-size:12.5px;cursor:pointer;text-align:center}
-
-/* ================================================================
-   STAR LEDGER — PREMIUM PRODUCT REDESIGN
-   Presentation-only layer. Existing IDs, storage keys, records,
-   calculations, forms, and event handlers remain intact.
-   ================================================================ */
+/* =====================================================================
+   DESIGN SYSTEM v2 — "Crystal Ledger"
+   Visual layer only. Loaded last so it refines every screen.
+   ===================================================================== */
 :root{
-  --bg:#f3f5f2; --surface:#fff; --glass:rgba(255,255,255,.86);
-  --glassBorder:rgba(28,54,43,.09); --text:#17231e; --text2:#738078;
-  --blue:#187653; --green:#16845b; --red:#c54b4b; --orange:#b88743; --navy:#153d32;
-  --sep:rgba(28,54,43,.10); --shadow:0 10px 34px rgba(22,48,37,.065),0 1px 3px rgba(22,48,37,.04);
-  --bgRadials:radial-gradient(circle at 82% 0%,rgba(209,225,210,.45),transparent 34%),radial-gradient(circle at 0% 70%,rgba(236,228,210,.35),transparent 36%);
-  --bgBase:linear-gradient(180deg,#f5f7f3,#f0f3ef 55%,#f7f6f1);
+  --glass:rgba(255,255,255,.72); --glassBorder:rgba(40,64,120,.11);
+  --text:#14203a; --text2:#5d6a85;
+  --sep:rgba(40,64,120,.10);
+  --inputBg:rgba(255,255,255,.85);
+  --dockBg:rgba(255,255,255,.80);
+  --shadow:0 1px 2px rgba(24,40,74,.05),0 10px 30px rgba(24,40,74,.09);
+  --glow-blue:0 0 0 0 transparent; --glow-gold:0 0 0 0 transparent;
+  --r:24px;
+  --bgBase:linear-gradient(180deg,#e8effb,#f2f5fc 45%,#fbf6ec);
+  --bgRadials:
+    radial-gradient(circle at 12% 4%, rgba(70,130,235,.34), transparent 34%),
+    radial-gradient(circle at 92% 2%, rgba(160,120,255,.22), transparent 32%),
+    radial-gradient(circle at 96% 58%, rgba(40,190,200,.20), transparent 34%),
+    radial-gradient(circle at 4% 80%, rgba(255,190,110,.24), transparent 34%);
 }
-:root[data-theme="dark"]{--bg:#111915;--surface:#1b2620;--glass:rgba(29,42,34,.92);--glassBorder:rgba(220,238,224,.09);--text:#edf4ee;--text2:#a1b0a5;--sep:rgba(235,245,237,.1);--shadow:0 14px 38px rgba(0,0,0,.25);--bgBase:linear-gradient(180deg,#101a14,#141d17 60%,#191d18)}
-body{font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:-.01em}
-body::before{filter:none;opacity:.9}
-.app{max-width:1480px;margin:0 auto;padding:22px 28px 54px;display:grid;grid-template-columns:238px minmax(0,1fr);column-gap:26px;align-items:start}
-.app>header{grid-column:1/-1;grid-row:1;position:sticky;top:10px;margin-bottom:20px;padding:15px 20px;border-radius:22px;background:rgba(255,255,255,.88);border:1px solid rgba(255,255,255,.95);box-shadow:0 8px 30px rgba(26,53,39,.07);backdrop-filter:none;-webkit-backdrop-filter:none;min-height:76px}
-:root[data-theme="dark"] .app>header{background:rgba(27,38,32,.94);border-color:var(--glassBorder)}
-.title{font-size:19px;font-weight:800;letter-spacing:-.65px;gap:11px}.title img{width:42px;height:42px;animation:none;box-shadow:0 3px 12px rgba(21,61,50,.2)}
-.brandPill{font-size:9px;letter-spacing:1.5px;font-weight:800;color:#96713b;background:#f3ecdf;border:1px solid #e9ddc8;border-radius:6px;padding:4px 6px;margin-left:2px}
-.sub{font-size:11.5px;letter-spacing:.15px;margin:3px 0 0 53px;color:var(--text2)}
-.syncBadge{margin:5px 0 0 53px!important;font-size:10px!important;letter-spacing:.2px}
-.app>nav{grid-column:1;grid-row:2 / span 30;position:sticky;top:112px;align-self:start;display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 10px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);border-radius:22px;box-shadow:var(--shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
-:root[data-theme="dark"] .app>nav{background:rgba(27,38,32,.86);border-color:var(--glassBorder)}
-nav button{flex:0 0 auto!important;justify-content:flex-start!important;text-align:left!important;width:100%;padding:12px 13px!important;border:1px solid transparent!important;border-radius:13px!important;background:transparent!important;box-shadow:none!important;color:var(--text2)!important;font-size:12.5px!important;font-weight:650!important;gap:11px!important;transition:all .18s ease!important}
-nav button .iconBadge{width:30px;height:30px;min-width:30px;font-size:13px;box-shadow:none}
-nav button.navActive{background:#e8f1eb!important;color:#174d39!important;border-color:#dce9df!important;box-shadow:inset 3px 0 0 #267553!important}
-:root[data-theme="dark"] nav button.navActive{background:#243b2d!important;color:#c8ead2!important;border-color:#304b39!important;box-shadow:inset 3px 0 0 #67b985!important}
-nav button:not(.navActive):hover{background:rgba(31,104,72,.07)!important;color:var(--text)!important}
-.app>section.view{grid-column:2;grid-row:auto;min-width:0;width:100%;max-width:1080px;margin:0 auto;}
-.app>section.view:not(.active){display:none}
-.app>section.view.active{display:block}
-.glass,.section,.card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--glass)!important;border:1px solid var(--glassBorder)!important;box-shadow:var(--shadow)!important}
-.glass::before{display:none!important}
-.section{padding:22px!important;border-radius:20px!important;margin:0 0 17px!important}
-.section h2{font-size:15px!important;font-weight:780!important;letter-spacing:-.25px!important;margin-bottom:16px!important;padding-left:13px!important}
-.section h2::before{background:linear-gradient(180deg,#267b56,#c5a16a)!important;box-shadow:none!important;width:3px!important}
-.cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 17px}
-.card{padding:19px 17px!important;border-radius:18px!important;min-height:105px;gap:13px!important}
-.card .label{font-size:10px!important;text-transform:uppercase;letter-spacing:.85px;font-weight:750!important;color:var(--text2)!important}
-.card .value{font-size:clamp(17px,2vw,23px)!important;font-weight:820!important;letter-spacing:-.7px!important;margin-top:7px;overflow-wrap:anywhere}
-.card .hint{font-size:9.5px!important;line-height:1.4;margin-top:4px}
-.iconBadge{width:38px;height:38px;min-width:38px;border-radius:13px!important;font-size:16px!important;box-shadow:none!important}
-.iconBadge.green{background:#e5f2e9!important;color:#26754e!important}.iconBadge.red{background:#f8e9e7!important;color:#b74e4b!important}.iconBadge.orange{background:#f5eee1!important;color:#98703a!important}.iconBadge.navy{background:#e9efeb!important;color:#305e4a!important}
-.welcomePanel{position:relative;overflow:hidden;min-height:208px;padding:27px 30px;margin:0 0 15px;border-radius:23px;background:linear-gradient(112deg,#153d32 0%,#1c5942 58%,#2d7252 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;box-shadow:0 14px 34px rgba(21,61,50,.16)}
-.welcomePanel:after{content:"";position:absolute;width:390px;height:390px;border:1px solid rgba(255,255,255,.11);border-radius:50%;right:-90px;top:-205px;box-shadow:0 0 0 28px rgba(255,255,255,.025),0 0 0 62px rgba(255,255,255,.02)}
-.welcomeCopy{position:relative;z-index:1;max-width:560px}.welcomeEyebrow{font-size:9px;font-weight:800;letter-spacing:2px;color:#c9dfd0;display:flex;align-items:center;gap:8px}.liveDot{width:7px;height:7px;border-radius:50%;background:#a8d8a9;box-shadow:0 0 0 4px rgba(168,216,169,.13)}
-.welcomePanel h1{font-size:clamp(26px,4vw,39px);line-height:1.02;letter-spacing:-1.6px;margin:15px 0 10px;font-weight:800}.welcomePanel h1 em{font-style:normal;color:#d8c49d}.welcomePanel p{margin:0;max-width:420px;font-size:12px;line-height:1.7;color:rgba(255,255,255,.72)}
-.welcomeMark{position:relative;z-index:1;margin:0 6% 0 20px;text-align:center}.markOuter{width:112px;height:112px;border:1px solid rgba(231,216,181,.5);border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 9px rgba(255,255,255,.035),inset 0 0 28px rgba(255,255,255,.06)}.markInner{width:78px;height:78px;border:1px solid rgba(231,216,181,.65);border-radius:50%;display:grid;place-items:center;color:#e5d4ae;font-family:Georgia,serif;font-size:52px;font-style:italic}.markCaption{font-size:8px;letter-spacing:2px;font-weight:800;color:#d7c49e;margin-top:12px}
-.quickActions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 17px}.quickAction{border:1px solid var(--glassBorder);background:var(--glass);color:var(--text);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer;box-shadow:var(--shadow);font:inherit;min-width:0;transition:transform .18s,border-color .18s}.quickAction:active{transform:scale(.98)}.quickAction .qaIcon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:#edf3ee;color:#286447;display:grid;place-items:center;font-size:21px;font-weight:500}.quickAction b{display:block;font-size:11.5px;font-weight:800}.quickAction small{display:block;color:var(--text2);font-size:9.5px;margin-top:3px;white-space:nowrap}.quickAction.qaPrimary{border-color:#cbded0;background:#f4f8f4!important}.quickAction.qaPrimary .qaIcon{background:#1c5b40;color:#fff}
-.debtCard,.alphaRow{border-radius:16px!important;border:1px solid var(--glassBorder)!important;background:var(--glass)!important;box-shadow:0 4px 16px rgba(25,52,37,.045)!important;padding:17px!important;margin-bottom:10px!important}
-.debtName{font-size:14px!important;font-weight:780!important}.debtAmt .rem{font-size:20px!important;letter-spacing:-.5px}.triCell{border-radius:11px!important;background:rgba(110,140,120,.07)!important;padding:9px!important}.triCell .tv{font-size:13px!important;font-weight:800!important}
-.searchBar input,input,textarea,select{border-radius:12px!important;border:1px solid var(--glassBorder)!important;background:rgba(255,255,255,.78)!important;color:#1b2921!important;min-height:42px;padding:11px 13px!important;box-shadow:none!important;font:inherit}
-:root[data-theme="dark"] .searchBar input,:root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select{background:#121c16!important;color:var(--text)!important;border-color:var(--glassBorder)!important}
-button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!important;border:1px solid #174b37!important;border-radius:12px!important;box-shadow:0 5px 13px rgba(21,77,53,.17)!important;font-weight:750!important}
-.secondaryBtn,.dangerBtn,.mbSecondary,.fileLbl{border-radius:12px!important;font-weight:700!important}
-.chip{border-radius:10px!important;padding:8px 13px!important;font-weight:700!important}.chipActive{background:#e6f0e8!important;color:#205d40!important;border-color:#cfe1d3!important}
-.badge{padding:4px 9px!important;border-radius:7px!important;letter-spacing:.1px}
-.modalBox{border-radius:22px!important;background:var(--surface)!important;border:1px solid var(--glassBorder)!important;box-shadow:0 24px 80px rgba(0,0,0,.22)!important}
-.fabBtn{box-shadow:0 10px 26px rgba(21,77,53,.25)!important}
-#backupBanner{border-radius:14px!important}
-/* keep the app comfortable on tablets and phones */
-@media(max-width:900px){.app{display:block;max-width:760px;padding:12px 14px 34px}.app>header{top:6px;margin-bottom:12px}.app>nav{position:sticky;top:91px;z-index:18;flex-direction:row;overflow:visible;flex-wrap:wrap;margin:0 -2px 15px;padding:8px;border-radius:15px;gap:6px}.app>nav::-webkit-scrollbar{display:none}nav button{width:auto!important;flex:1 1 calc(33.333% - 6px)!important;justify-content:flex-start!important;padding:9px 10px!important;font-size:11px!important}nav button .iconBadge{width:25px;height:25px;min-width:25px;font-size:11px}.app>section.view{max-width:none}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.quickActions{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){.app>nav{top:79px;flex-wrap:wrap;overflow:visible}.app>nav button{flex:1 1 calc(50% - 6px)!important;justify-content:flex-start!important}.app{padding:9px 10px 30px}.app>header{padding:11px 12px;border-radius:17px;min-height:66px}.title{font-size:16px}.title img{width:36px;height:36px}.sub,.syncBadge{margin-left:47px!important}.app>header .primary{padding:10px 11px!important;font-size:11px!important}.app>header .secondaryBtn{padding:9px 10px!important}.app>nav{top:79px;margin-bottom:12px}.welcomePanel{min-height:190px;padding:22px 20px;border-radius:19px}.welcomePanel h1{font-size:29px}.welcomePanel p{font-size:10.5px;max-width:270px}.welcomeMark{margin:0 0 0 8px}.markOuter{width:70px;height:70px;box-shadow:0 0 0 5px rgba(255,255,255,.035)}.markInner{width:50px;height:50px;font-size:34px}.markCaption{font-size:6px;letter-spacing:1px}.quickActions{gap:7px}.quickAction{padding:10px 9px;gap:8px;border-radius:13px}.quickAction .qaIcon{width:29px;height:29px;flex-basis:29px;font-size:18px}.quickAction b{font-size:10.5px}.quickAction small{font-size:8.5px}.cards{gap:8px}.card{padding:13px 11px!important;min-height:92px;gap:8px!important}.card .value{font-size:16px!important}.card .label{font-size:8.5px!important;letter-spacing:.5px}.iconBadge{width:30px;height:30px;min-width:30px;border-radius:10px!important;font-size:13px!important}.section{padding:15px!important;border-radius:16px!important}.section h2{font-size:14px!important}.debtCard{padding:13px!important}.formGrid{gap:10px!important}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+:root[data-theme="dark"]{
+  --glass:rgba(255,255,255,.065); --glassBorder:rgba(255,255,255,.10);
+  --text:#eef2fa; --text2:#9fa9c0;
+  --sep:rgba(255,255,255,.09);
+  --inputBg:rgba(255,255,255,.07);
+  --dockBg:rgba(22,26,40,.82);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px rgba(0,0,0,.45);
+  --bgBase:linear-gradient(180deg,#080b14,#0d111c 45%,#0f111a);
+  --bgRadials:
+    radial-gradient(circle at 12% 4%, rgba(60,110,230,.34), transparent 34%),
+    radial-gradient(circle at 92% 2%, rgba(140,90,255,.22), transparent 32%),
+    radial-gradient(circle at 96% 58%, rgba(30,170,190,.16), transparent 34%),
+    radial-gradient(circle at 4% 80%, rgba(230,150,70,.12), transparent 34%);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Inter,system-ui,Roboto,sans-serif;
+  font-feature-settings:"tnum" 1,"cv11" 1;padding-bottom:120px;letter-spacing:-.005em}
+body::before{filter:blur(60px) saturate(135%);opacity:.9}
+.app{padding:10px 14px 24px}
 
+/* ---- surfaces ---- */
+.glass{background:var(--glass);border:1px solid var(--glassBorder);border-radius:var(--r);
+  box-shadow:var(--shadow);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%)}
+.glass::before{display:none}
+.section{margin:12px 0;padding:18px 16px}
+.section h2{font-size:17px;font-weight:700;letter-spacing:-.3px;padding-left:0;margin:0 0 14px;gap:9px}
+.section h2::before{display:none}
+.card{padding:16px 14px;border-radius:22px}
+.iconBadge{width:36px;height:36px;min-width:36px;border-radius:12px;font-size:16px;box-shadow:none}
+.iconBadge.navy{background:linear-gradient(145deg,var(--blue),var(--navy))}
+.iconBadge.red{background:linear-gradient(145deg,#ff8e86,#e0525c)}
+.iconBadge.orange{background:linear-gradient(145deg,#ffc15e,#e08a1e)}
+.iconBadge.green{background:linear-gradient(145deg,#59dd9a,#16a463)}
+.label{font-size:10.5px;font-weight:600;letter-spacing:.9px}
+.value{font-size:18px;font-weight:700;letter-spacing:-.4px}
+.hint{font-size:10.5px}
+.small{font-size:12px}
+.empty{padding:26px 12px;color:var(--text2);font-size:13.5px}
+
+/* ---- top bar ---- */
+header.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:8px;z-index:20;
+  padding:10px 12px 10px 14px;border-radius:22px;
+  background:var(--dockBg);border:1px solid var(--glassBorder);box-shadow:var(--shadow);
+  backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%)}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  box-shadow:0 0 0 2px #fff,0 0 0 3.5px rgba(224,179,74,.9),0 6px 14px rgba(24,40,74,.2);animation:none}
+.brandName{font-size:15.5px;font-weight:700;letter-spacing:-.3px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brandSub{font-size:11px;color:var(--text2);margin-top:2px;font-weight:500;display:flex;align-items:center;gap:6px}
+.topActions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.iconBtn{width:40px;height:40px;border-radius:14px;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s var(--spring)}
+.iconBtn:active{transform:scale(.92)}
+.iconBtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.iconBtn.pri{background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(24,40,74,.32)}
+.syncBadge{display:inline-flex;align-items:center;gap:5px;margin:0;font-size:10.5px;font-weight:600;padding:2px 8px 2px 7px;border-radius:999px;border:none}
+.syncBadge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.syncBadge.online{background:rgba(31,181,119,.15);color:#139a5c;border:none}
+.syncBadge.offline{background:rgba(217,138,18,.15);color:#b0720d;border:none}
+:root[data-theme="dark"] .syncBadge.online{color:#5fe0a6}
+:root[data-theme="dark"] .syncBadge.offline{color:#ffc05a}
+
+/* ---- bottom dock ---- */
+nav.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:30;
+  width:min(560px,calc(100% - 22px));display:flex;gap:2px;padding:7px;border-radius:28px;margin:0;flex-wrap:nowrap;
+  background:var(--dockBg);border:1px solid var(--glassBorder);
+  box-shadow:0 18px 44px rgba(24,40,74,.20),0 2px 6px rgba(24,40,74,.08);
+  backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%)}
+nav.dock button{flex:1;min-width:0;border:none;background:none;box-shadow:none;border-radius:22px;padding:8px 2px 7px;
+  color:var(--text2);font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;transition:background-color .25s var(--ease),color .25s var(--ease),transform .15s var(--spring)}
+nav.dock button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s var(--spring)}
+nav.dock button:active{transform:scale(.92)}
+nav.dock button.navActive{background:linear-gradient(135deg,rgba(58,116,232,.16),rgba(37,181,204,.14));color:var(--blue);box-shadow:none}
+:root[data-theme="dark"] nav.dock button.navActive{color:#8fb8ff}
+nav.dock button.navActive svg{transform:translateY(-1px) scale(1.08)}
+
+/* ---- "More" sheet ---- */
+.moreBackdrop{position:fixed;inset:0;z-index:31;background:rgba(10,16,32,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s var(--ease)}
+.moreBackdrop.show{opacity:1;pointer-events:auto}
+nav.moreSheet{position:fixed;left:50%;bottom:0;z-index:32;width:min(560px,100%);display:block;margin:0;
+  transform:translate(-50%,105%);transition:transform .38s var(--ease);
+  background:var(--dockBg);backdrop-filter:blur(28px) saturate(170%);-webkit-backdrop-filter:blur(28px) saturate(170%);
+  border:1px solid var(--glassBorder);border-bottom:none;border-radius:30px 30px 0 0;padding:10px 18px calc(24px + env(safe-area-inset-bottom));
+  box-shadow:0 -20px 50px rgba(10,16,32,.25)}
+nav.moreSheet.show{transform:translate(-50%,0)}
+.sheetGrab{width:42px;height:5px;border-radius:5px;background:var(--sep);margin:0 auto 14px;opacity:.9}
+.sheetTitle{font-size:17px;font-weight:700;letter-spacing:-.3px;margin:0 2px 14px}
+.moreGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+nav.moreSheet button{border:1px solid var(--glassBorder);background:var(--glass);box-shadow:none;border-radius:20px;padding:16px 6px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;transition:transform .15s var(--spring)}
+nav.moreSheet button:active{transform:scale(.95)}
+nav.moreSheet button.navActive{border-color:rgba(58,116,232,.5);background:rgba(58,116,232,.10);color:var(--text)}
+.mIco{width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;box-shadow:0 8px 18px rgba(24,40,74,.20)}
+
+/* ---- dashboard hero ---- */
+.greet{margin:18px 4px 12px}
+.gHi{font-size:26px;font-weight:700;letter-spacing:-.7px;line-height:1.15}
+.gDate{font-size:13px;color:var(--text2);margin-top:3px;font-weight:500}
+.hero{position:relative;overflow:hidden;border-radius:30px;padding:22px 20px 18px;color:#fff;
+  background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 120%);
+  box-shadow:0 22px 44px rgba(24,40,74,.30),inset 0 1px 0 rgba(255,255,255,.25)}
+.hero::before{content:"";position:absolute;width:260px;height:260px;right:-70px;top:-110px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.28),transparent 68%)}
+.hero::after{content:"";position:absolute;width:220px;height:220px;left:-80px;bottom:-130px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,190,90,.30),transparent 68%)}
+.hero>*{position:relative;z-index:1}
+.heroEye{font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;opacity:.82;display:flex;align-items:center;justify-content:space-between}
+.heroPill{font-size:11px;font-weight:600;letter-spacing:.2px;text-transform:none;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22)}
+.heroNum{font-size:40px;font-weight:700;letter-spacing:-1.4px;line-height:1.1;margin-top:8px;word-break:break-word}
+.heroNum.neg{color:#ffc2c7}
+.heroNum small{font-size:15px;font-weight:600;letter-spacing:0;opacity:.8;margin-left:5px}
+.heroSub{font-size:12px;opacity:.75;margin-top:4px}
+.heroSplit{display:grid;grid-template-columns:1fr 1fr;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.2)}
+.heroSplit>div{padding:0 2px}
+.heroSplit>div+div{padding-left:16px;border-left:1px solid rgba(255,255,255,.2)}
+.heroSplit .hl{font-size:10.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.78;display:flex;align-items:center;gap:6px}
+.heroSplit .hl i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.heroSplit .hv{font-size:19px;font-weight:700;letter-spacing:-.4px;margin-top:5px;word-break:break-word}
+.qTiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0 4px}
+.qTile{border:1px solid var(--glassBorder);background:var(--glass);border-radius:20px;padding:13px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  color:var(--text);font-size:11.5px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s var(--spring);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.qTile:active{transform:scale(.94)}
+.qTile .mIco{width:40px;height:40px;border-radius:13px;font-size:19px;box-shadow:0 6px 14px rgba(24,40,74,.18)}
+.secHead{display:flex;align-items:center;justify-content:space-between;margin:22px 4px 10px;font-size:17px;font-weight:700;letter-spacing:-.3px}
+.secHead span{font-size:12px;font-weight:600;color:var(--text2);letter-spacing:0}
+
+/* ---- debt cards ---- */
+.debtCard{padding:16px;margin-bottom:12px;border-radius:22px}
+.debtName{font-size:16.5px;font-weight:700;letter-spacing:-.3px}
+.debtMeta{gap:6px;margin-top:10px;font-size:12px}
+.debtActions{gap:8px;margin-top:12px}
+.badge{padding:3px 10px;font-size:10.5px;font-weight:600;letter-spacing:.1px}
+.debtNotes{font-style:normal;opacity:.8}
+.secondaryBtn,.settleBtn,.dangerBtn{padding:8px 13px;border-radius:12px;font-size:12.5px;font-weight:600}
+.secondaryBtn{border:1px solid rgba(58,116,232,.28);background:rgba(58,116,232,.09);color:var(--blue)}
+.dangerBtn{border:1px solid rgba(224,82,92,.30);background:rgba(224,82,92,.09);color:#c8333f}
+.settleBtn{border:1px solid rgba(31,181,119,.32);background:rgba(31,181,119,.10);color:#139a5c}
+:root[data-theme="dark"] .secondaryBtn{color:#8fb8ff}
+:root[data-theme="dark"] .dangerBtn{color:#ff8a93}
+:root[data-theme="dark"] .settleBtn{color:#5fe0a6}
+button.primary{border:none;background:linear-gradient(135deg,var(--blue),var(--navy));border-radius:16px;padding:13px 20px;font-size:14.5px;font-weight:600;letter-spacing:-.1px;
+  box-shadow:0 10px 22px rgba(24,40,74,.28);transition:transform .15s var(--spring)}
+button.primary:active{transform:scale(.97)}
+
+/* ---- forms ---- */
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=email],input[type=password],textarea,select{
+  background:var(--inputBg);border:1px solid var(--glassBorder);border-radius:14px;padding:12px 14px;font-size:15px;color:var(--text)}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(58,116,232,.16)}
+::placeholder{color:var(--text2);opacity:.6}
+.formGrid label{font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.2px}
+.choice2 label{border:1px solid var(--glassBorder);background:var(--glass);border-radius:14px;padding:12px;color:var(--text2)}
+.chip{background:var(--glass);border:1px solid var(--glassBorder);padding:7px 15px;font-size:12.5px;color:var(--text2)}
+.chip.chipActive{background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;border-color:transparent}
+.segmented button{border-radius:14px;padding:11px 12px}
+.segmented button.active{background:linear-gradient(135deg,var(--blue),var(--navy))}
+.searchBar input{padding-left:16px}
+.formActions{margin-top:18px}
+.statRow{padding:10px 0;font-size:13.5px}
+
+/* ---- sheets & dialogs ---- */
+.modalOverlay{align-items:flex-end;padding:0;background:rgba(10,16,32,.42);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modalBox{max-width:560px !important;width:100%;border-radius:30px 30px 0 0;padding:12px 20px calc(22px + env(safe-area-inset-bottom));text-align:left;
+  background:var(--dockBg);border:1px solid var(--glassBorder);border-bottom:none;animation:sheetIn .38s var(--ease);
+  box-shadow:0 -20px 50px rgba(10,16,32,.28);max-height:92vh;overflow-y:auto}
+.modalBox::before{display:block;content:"";width:42px;height:5px;border-radius:5px;background:var(--sep);margin:0 auto 16px;position:static;
+  inset:auto;transform:none;opacity:1;background-image:none}
+@keyframes sheetIn{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+#modalOverlay{align-items:center;padding:20px}
+#modalOverlay .modalBox{max-width:340px !important;border-radius:28px;border-bottom:1px solid var(--glassBorder);padding:24px 20px 18px;text-align:center;animation:modalIn .28s var(--ease)}
+#modalOverlay .modalBox::before{display:none}
+.modalMsg{font-size:14.5px;line-height:1.45}
+.mbPrimary,.mbSecondary{padding:13px;border-radius:15px;font-size:14.5px;font-weight:600}
+.mbPrimary{background:linear-gradient(135deg,var(--blue),var(--navy));box-shadow:0 8px 18px rgba(24,40,74,.25)}
+.mbSecondary{background:var(--glass);border:1px solid var(--glassBorder)}
+.modalBox>div:first-child{letter-spacing:-.3px}
+@media(min-width:640px){
+  .modalOverlay{align-items:center;padding:20px}
+  .modalBox{border-radius:30px;border-bottom:1px solid var(--glassBorder)}
+  .modalBox:not(#modalOverlay .modalBox)::before{display:none}
+}
+
+/* ---- floating + button & toast sit above the dock ---- */
+.fab{bottom:calc(92px + env(safe-area-inset-bottom));right:18px;width:58px;height:58px;z-index:28;font-size:28px;font-weight:300;
+  background:linear-gradient(135deg,#f3b24a,#e08a1e);color:#fff;box-shadow:0 14px 30px rgba(224,138,30,.45);animation:none}
+.fabMenu{bottom:calc(160px + env(safe-area-inset-bottom));z-index:29}
+.fabBackdrop{z-index:27;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);background:rgba(10,16,32,.28)}
+.fabMiniBtn{background:var(--dockBg);color:var(--text);border:1px solid var(--glassBorder);padding:12px 18px;font-size:13.5px;font-weight:600;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.saveToast{bottom:calc(98px + env(safe-area-inset-bottom));background:rgba(20,28,48,.92);font-weight:600;padding:10px 18px}
+
+
+/* ---- stat cards (portfolio etc.) ---- */
+.cards{gap:12px}
+.cards .card{flex-direction:column;align-items:flex-start;gap:12px;padding:16px}
+.cards .card .cardText{width:100%}
+.cards .card .value{font-size:19px;margin-top:4px}
+#portfolio .cards .card:nth-child(5){grid-column:1/-1;order:-1;flex-direction:row;align-items:center;gap:14px;padding:22px 20px;border:none;color:#fff;
+  background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 120%);box-shadow:0 20px 40px rgba(24,40,74,.28),inset 0 1px 0 rgba(255,255,255,.25)}
+#portfolio .cards .card:nth-child(5) .label{color:rgba(255,255,255,.8)}
+#portfolio .cards .card:nth-child(5) .value{color:#fff;font-size:32px;letter-spacing:-1px}
+#portfolio .cards .card:nth-child(5) .hint{color:rgba(255,255,255,.7);font-size:11px}
+#portfolio .cards .card:nth-child(5) .iconBadge{background:rgba(255,255,255,.2);width:48px;height:48px;border-radius:16px;font-size:22px}
+#pfTrendChart .segmented{gap:6px;margin:10px 0 12px}
+#pfTrendChart .segmented button{padding:8px 4px;font-size:12.5px;border-radius:12px}
+/* ---- dark-mode readable badges ---- */
+:root[data-theme="dark"] .badge.overdue,:root[data-theme="dark"] .badge.pay{background:rgba(255,122,132,.16);color:#ff9aa2}
+:root[data-theme="dark"] .badge.duesoon,:root[data-theme="dark"] .badge.short{background:rgba(255,192,90,.16);color:#ffc86e}
+:root[data-theme="dark"] .badge.long{background:rgba(120,170,255,.16);color:#9cc4ff}
+:root[data-theme="dark"] .badge.settled,:root[data-theme="dark"] .badge.recv{background:rgba(95,224,166,.16);color:#5fe0a6}
+:root[data-theme="dark"] .lastPaid{color:#5fe0a6}
+:root[data-theme="dark"] .lastPaid.noPay{color:#ff9aa2}
+
+.view{padding-top:12px}
+:root[data-theme="dark"] .choice2 label.cRecv:has(input:checked){background:rgba(95,224,166,.16);border-color:rgba(95,224,166,.55);color:#5fe0a6}
+:root[data-theme="dark"] .choice2 label.cPay:has(input:checked){background:rgba(255,122,132,.16);border-color:rgba(255,122,132,.55);color:#ff9aa2}
+:root[data-theme="dark"] .choice2 label.tShort:has(input:checked){background:rgba(255,192,90,.16);border-color:rgba(255,192,90,.55);color:#ffc86e}
+:root[data-theme="dark"] .choice2 label.tLong:has(input:checked){background:rgba(120,170,255,.16);border-color:rgba(120,170,255,.55);color:#9cc4ff}
+/* ---- tables / misc ---- */
+.ledgerTable th{font-weight:600;letter-spacing:.8px}
+.alphaRow,.cList{border-radius:22px}
+.view.active{animation:viewIn .42s var(--ease)}
+.cards .card,.qTile,.cList,.debtCard{animation:riseIn .5s var(--ease) both}
+.cards .card:nth-child(2),.qTile:nth-child(2){animation-delay:.04s}
+.cards .card:nth-child(3),.qTile:nth-child(3){animation-delay:.08s}
+.cards .card:nth-child(4),.qTile:nth-child(4){animation-delay:.12s}
+.cards .card:nth-child(5){animation-delay:.16s}
+@keyframes riseIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+#backupBanner{border-radius:18px !important}
 </style>
 </head>
 <body>
@@ -381,6 +651,10 @@ button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!imp
     <div class="payRow">
       <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Amount (AFN)</label><input type="number" id="payAmount" step="0.01" min="0"></div>
       <div><label style="font-size:11.5px;font-weight:600;color:var(--text2)">Date</label><input type="date" id="payDate"></div>
+    </div>
+    <div style="text-align:left;margin-bottom:12px">
+      <label style="font-size:11.5px;font-weight:600;color:var(--text2)">Description (optional)</label>
+      <input type="text" id="payNote" maxlength="120" placeholder="e.g. Paid in cash by his brother" style="width:100%;box-sizing:border-box">
     </div>
     <div class="modalBtns">
       <button class="mbSecondary" onclick="closePayModal()">Cancel</button>
@@ -496,47 +770,38 @@ button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!imp
 </div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
 <div class="app">
-<header class="glass">
-  <div><div class="title"><img src="logo-star.png" alt=""> <span>Shop Debts</span><span class="brandPill">LEDGER</span></div><div class="sub">Your business, clearly in control</div><div id="syncBadge" class="syncBadge offline">📴 Local only</div></div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button type="button" class="secondaryBtn" style="padding:11px 13px;font-size:15px" onclick="openSearchModal()" aria-label="Search">🔍</button>
-    <button type="button" class="primary" onclick="openAddForm()">+ Add Debt</button>
+<header class="topbar">
+  <div class="brand"><img src="logo-star.png" alt="">
+    <div style="min-width:0"><div class="brandName">Star Shampoo &amp; Wasleen</div>
+    <div class="brandSub">Debt Ledger <span id="syncBadge" class="syncBadge offline">Local</span></div></div></div>
+  <div class="topActions">
+    <button type="button" class="iconBtn" onclick="openSearchModal()" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg></button>
+    <button type="button" class="iconBtn pri" onclick="openAddForm()" aria-label="Add debt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
 </header>
-<nav>
-<button type="button" class="navActive" data-view="dashboard" onclick="show('dashboard')"><span class="iconBadge navy">🏠</span>Dashboard</button>
-<button type="button" data-view="recv" onclick="show('recv')"><span class="iconBadge green">🟢</span>Owed to You</button>
-<button type="button" data-view="pay" onclick="show('pay')"><span class="iconBadge red">🔴</span>You Owe</button>
-<button type="button" data-view="alpha" onclick="show('alpha')"><span class="iconBadge navy">🔤</span>All Customers</button>
-<button type="button" data-view="inventory" onclick="show('inventory')"><span class="iconBadge navy">📦</span>Inventory</button>
-<button type="button" data-view="portfolio" onclick="show('portfolio')"><span class="iconBadge orange">📊</span>Portfolio</button>
-<button type="button" data-view="settled" onclick="show('settled')"><span class="iconBadge navy">✅</span>Settled</button>
-<button type="button" data-view="backup" onclick="show('backup')"><span class="iconBadge orange">💾</span>Backup</button>
-<button type="button" data-view="settings" onclick="show('settings')"><span class="iconBadge navy">⚙️</span>Settings</button>
-</nav>
 
 <section id="dashboard" class="view active">
-<div class="welcomePanel">
-  <div class="welcomeCopy"><div class="welcomeEyebrow"><span class="liveDot"></span> BUSINESS OVERVIEW</div><h1>Your numbers.<br><em>Under control.</em></h1><p>Track what comes in, what goes out, and what your business is owed — all in one place.</p></div>
-  <div class="welcomeMark" aria-hidden="true"><div class="markOuter"><div class="markInner">S</div></div><div class="markCaption">STAR LEDGER</div></div>
-</div>
-<div class="quickActions" aria-label="Quick actions">
-  <button type="button" class="quickAction qaPrimary" onclick="openAddForm()"><span class="qaIcon">＋</span><span><b>Add account</b><small>New customer or supplier</small></span></button>
-  <button type="button" class="quickAction" onclick="openCashModal('in')"><span class="qaIcon">↗</span><span><b>Cash received</b><small>Record money in</small></span></button>
-  <button type="button" class="quickAction" onclick="openCashModal('out')"><span class="qaIcon">↙</span><span><b>Cash paid</b><small>Record money out</small></span></button>
-  <button type="button" class="quickAction" onclick="openSearchModal()"><span class="qaIcon">⌕</span><span><b>Find anything</b><small>Search your records</small></span></button>
-</div>
 <div id="backupBanner" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:14px;background:rgba(201,121,26,.14);border:1px solid rgba(201,121,26,.35);color:#8a5a13;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px">
   <span id="backupBannerText">⚠️ Backup is overdue</span>
   <button type="button" class="mbPrimary" style="padding:7px 12px;font-size:12px" onclick="exportBackupExcel()">Backup Now</button>
 </div>
-<div class="cards">
-<div class="card glass"><span class="iconBadge green">🟢</span><div class="cardText"><div class="label">You're Owed</div><div class="value" id="dashRecv">0 AFN</div></div></div>
-<div class="card glass"><span class="iconBadge red">🔴</span><div class="cardText"><div class="label">You Owe</div><div class="value" id="dashPay">0 AFN</div></div></div>
-<div class="card glass"><span class="iconBadge navy">⚖️</span><div class="cardText"><div class="label">Debt Position</div><div class="value" id="dashNet">0 AFN</div><div class="hint">Receivables − Payables only (see Net Worth in Portfolio for full picture)</div></div></div>
-<div class="card glass"><span class="iconBadge navy">📋</span><div class="cardText"><div class="label">Active Debts</div><div class="value" id="dashActive">0</div></div></div>
+<div class="greet"><div class="gHi" id="greetHi">Hello</div><div class="gDate" id="greetDate"></div></div>
+<div class="hero">
+  <div class="heroEye"><span>Debt position</span><span class="heroPill"><span id="dashActive">0</span> active debts</span></div>
+  <div class="heroNum" id="dashNet">0 AFN</div>
+  <div class="heroSub">Money owed to you minus money you owe</div>
+  <div class="heroSplit">
+    <div><div class="hl"><i style="background:#5be6a4"></i>You're owed</div><div class="hv" id="dashRecv">0 AFN</div></div>
+    <div><div class="hl"><i style="background:#ff8f98"></i>You owe</div><div class="hv" id="dashPay">0 AFN</div></div>
+  </div>
 </div>
-<div class="section glass"><h2>🕘 Recently Added</h2><div id="recentList"></div></div>
+<div class="qTiles">
+  <button type="button" class="qTile" onclick="openAddForm()"><span class="mIco" style="background:linear-gradient(145deg,#6a8cf0,#3a58c8)">➕</span>New debt</button>
+  <button type="button" class="qTile" onclick="quickAddAction('sell')"><span class="mIco" style="background:linear-gradient(145deg,#ffc15e,#e08a1e)">💰</span>Sell</button>
+  <button type="button" class="qTile" onclick="quickAddAction('cashin')"><span class="mIco" style="background:linear-gradient(145deg,#59dd9a,#16a463)">💵</span>Cash in</button>
+  <button type="button" class="qTile" onclick="show('backup')"><span class="mIco" style="background:linear-gradient(145deg,#4fd0e0,#1c93b0)">💾</span>Backup</button>
+</div>
+<div class="secHead">Recently added</div><div id="recentList"></div>
 </section>
 
 <section id="recv" class="view">
@@ -607,13 +872,9 @@ button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!imp
 
 <section id="statement" class="view">
 <div class="section glass">
-<h2 id="stTitle">📄 Statement</h2>
+<h2 id="stTitle">Customer Account</h2>
 <div id="stBody"></div>
-<div class="formActions">
-<button type="button" class="secondaryBtn" style="flex:1;padding:11px" onclick="show(lastListView||'dashboard')">Back</button>
-<button type="button" class="primary" style="flex:1" onclick="copyStatement()">📋 Copy Statement</button>
-<button type="button" class="primary" style="flex:1" onclick="shareStatementImage()">📤 Share as Picture</button>
-</div>
+<div style="margin-top:6px"><button type="button" class="secondaryBtn" style="width:100%;padding:12px;border-radius:14px;font-weight:500" onclick="show(lastListView||'dashboard')">← Back</button></div>
 </div>
 </section>
 
@@ -732,6 +993,23 @@ button.primary,.mbPrimary{background:linear-gradient(135deg,#1c6044,#174b37)!imp
 </section>
 
 </div>
+<nav class="dock" id="dock">
+<button type="button" class="navActive" data-view="dashboard" onclick="show('dashboard')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Home</button>
+<button type="button" data-view="recv" onclick="show('recv')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 7 7 17"/><path d="M7 8v9h9"/></svg>Owed</button>
+<button type="button" data-view="pay" onclick="show('pay')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>You Owe</button>
+<button type="button" data-view="alpha" onclick="show('alpha')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.6.2 4.5 2.2 4.5 4.8"/></svg>Customers</button>
+<button type="button" id="moreBtn" onclick="toggleMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.9"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.9"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.9"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.9"/></svg>More</button>
+</nav>
+<div class="moreBackdrop" id="moreBackdrop" onclick="closeMore()"></div>
+<nav class="moreSheet" id="moreSheet">
+<div class="sheetGrab"></div><div class="sheetTitle">More</div>
+<div class="moreGrid">
+<button type="button" data-view="inventory" onclick="show('inventory')"><span class="mIco" style="background:linear-gradient(145deg,#6a8cf0,#3a58c8)">📦</span>Inventory</button>
+<button type="button" data-view="portfolio" onclick="show('portfolio')"><span class="mIco" style="background:linear-gradient(145deg,#ffc15e,#e08a1e)">📊</span>Portfolio</button>
+<button type="button" data-view="settled" onclick="show('settled')"><span class="mIco" style="background:linear-gradient(145deg,#59dd9a,#16a463)">✅</span>Settled</button>
+<button type="button" data-view="backup" onclick="show('backup')"><span class="mIco" style="background:linear-gradient(145deg,#4fd0e0,#1c93b0)">💾</span>Backup</button>
+<button type="button" data-view="settings" onclick="show('settings')"><span class="mIco" style="background:linear-gradient(145deg,#a78bfa,#6d4ae0)">⚙️</span>Settings</button>
+</div></nav>
 <div class="fabBackdrop" id="fabBackdrop" onclick="closeQuickAdd()"></div>
 <div class="fabMenu hidden" id="fabMenu">
   <button type="button" class="fabMiniBtn" onclick="quickAddAction('debt')">➕ New Debt</button>
@@ -1015,7 +1293,17 @@ function disableCloudBackup(){
   try{ if(window.firebase && firebase.auth) firebase.auth().signOut(); }catch(e){}
   updateCloudStatus();
 }
+function updateSyncBadge(){
+  const b=document.getElementById('syncBadge'); if(!b) return;
+  if(!cloudEnabled){ b.className='syncBadge offline'; b.textContent='Local'; return; }
+  const p=outboxCount(), off=!navigator.onLine;
+  b.className='syncBadge '+((p>0||off)?'offline':'online');
+  b.textContent=off?'Offline':(p>0?'Syncing':'Synced');
+}
+window.addEventListener('online',()=>{ try{updateSyncBadge();}catch(e){} });
+window.addEventListener('offline',()=>{ try{updateSyncBadge();}catch(e){} });
 function updateCloudStatus(){
+  try{ updateSyncBadge(); }catch(e){}
   const el=document.getElementById('cloudStatus'); if(!el) return;
   if(!cloudEnabled){ el.textContent='Cloud backup is off — your data stays only on this device (plus whatever you export manually).'; return; }
   const pending=outboxCount();
@@ -1290,7 +1578,18 @@ function showUI(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById(view).classList.add('active');
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('navActive',b.dataset.view===view));
+  const mb=document.getElementById('moreBtn'); if(mb) mb.classList.toggle('navActive',['inventory','portfolio','settled','backup','settings'].includes(view));
+  closeMore();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+function toggleMore(){
+  const sh=document.getElementById('moreSheet'),bd=document.getElementById('moreBackdrop');
+  const open=!sh.classList.contains('show');
+  sh.classList.toggle('show',open); bd.classList.toggle('show',open);
+}
+function closeMore(){
+  const sh=document.getElementById('moreSheet'),bd=document.getElementById('moreBackdrop');
+  if(sh) sh.classList.remove('show'); if(bd) bd.classList.remove('show');
 }
 function show(view){
   if(['recv','pay','settled','dashboard','alpha'].includes(view)) lastListView=view;
@@ -1344,11 +1643,12 @@ async function updateBackupBanner(){
   }
 }
 function triCells(d){
-  return `<div class="triRow">
-    <div class="triCell triTotal"><div class="tl">Total</div><div class="tv">${money(totalDue(d))}</div></div>
-    <div class="triCell triRecv"><div class="tl">Received</div><div class="tv">${money(paidSoFar(d))}</div></div>
-    <div class="triCell triPend"><div class="tl">Pending</div><div class="tv">${money(remaining(d))}</div></div>
-  </div>`;
+  const t=totalDue(d), pd=paidSoFar(d), pct=t>0?Math.min(100,pd/t*100):0;
+  return `<div class="tri3">
+    <div><div class="tl">Total</div><div class="tv">${money(t)}</div></div>
+    <div><div class="tl">Received</div><div class="tv pos">${money(pd)}</div></div>
+    <div><div class="tl">Pending</div><div class="tv neg">${money(remaining(d))}</div></div>
+  </div><div class="prog" style="margin-top:12px;height:5px"><i style="width:${pct.toFixed(0)}%"></i></div>`;
 }
 function renderAlphaList(){
   const el=document.getElementById('alphaList'); if(!el) return;
@@ -1363,11 +1663,11 @@ function renderAlphaList(){
     if(!/[A-Z]/.test(letter)) letter='#';
     if(letter!==lastLetter){ html+=`<div class="alphaHeader">${letter}</div>`; lastLetter=letter; }
     const dirIcon=d.direction==='payable'?'🔴':'🟢';
-    html+=`<div class="alphaRow" onclick="openStatement('${d.id}')">
-      <div class="alphaTop">
-        <div class="alphaName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
-        <button type="button" class="alphaEdit" onclick="event.stopPropagation();openEditForm('${d.id}')" aria-label="Edit">✏️</button>
-        <button type="button" class="alphaEdit" onclick="event.stopPropagation();deleteDebt('${d.id}')" aria-label="Delete" style="color:#a52530">🗑</button>
+    html+=`<div class="cList" onclick="openStatement('${d.id}')">
+      <div class="cTop">
+        <div class="avatar">${escapeHtml((d.name||'?').trim().charAt(0).toUpperCase())}</div>
+        <div class="cName">${dirIcon} ${escapeHtml(d.name||'Unnamed')}</div>
+        <span class="chev">›</span>
       </div>
       ${triCells(d)}
     </div>`;
@@ -1758,8 +2058,11 @@ function renderDashboard(){
   document.getElementById('dashPay').textContent=money(paySum)+' AFN';
   const net=recvSum-paySum;
   const netEl=document.getElementById('dashNet');
-  netEl.textContent=(net<0?'-':'')+money(Math.abs(net))+' AFN';
-  netEl.style.color=net<0?'var(--red)':'var(--green)';
+  netEl.innerHTML=(net<0?'−':'')+money(Math.abs(net))+'<small>AFN</small>';
+  netEl.classList.toggle('neg',net<0);
+  const hr=new Date().getHours();
+  const gh=document.getElementById('greetHi'); if(gh) gh.textContent=hr<12?'Good morning':(hr<17?'Good afternoon':'Good evening');
+  const gd=document.getElementById('greetDate'); if(gd) gd.textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('dashActive').textContent=active.length;
   const recent=[...state.debts].sort((a,b)=>(latestDateGiven(b)||'').localeCompare(latestDateGiven(a)||'')).slice(0,5);
   document.getElementById('recentList').innerHTML=recent.length
@@ -1828,7 +2131,8 @@ function debtCardHtml(d,settledView){
   }
   return `<div class="debtCard glass">
     <div class="debtTop" style="cursor:pointer" onclick="openStatement('${d.id}')">
-      <div style="min-width:0"><div class="debtName" style="font-size:19px;font-weight:800;line-height:1.25">${escapeHtml(d.name)}</div>${phone}</div>
+      <div class="cTop" style="width:100%"><div class="avatar">${escapeHtml((d.name||'?').trim().charAt(0).toUpperCase())}</div>
+      <div style="min-width:0;flex:1"><div class="cName" style="font-size:18px">${escapeHtml(d.name)}</div>${phone}</div><span style="font-size:22px;opacity:.35">›</span></div>
     </div>
     <div style="cursor:pointer" onclick="openStatement('${d.id}')">${triCells(d)}</div>
     <div class="debtMeta" style="cursor:pointer" onclick="openStatement('${d.id}')">
@@ -2059,6 +2363,7 @@ function openPayModal(id){
   document.getElementById('payTitle').textContent=`Record Payment — ${d.name} (${money(remaining(d))} AFN left)`;
   document.getElementById('payAmount').value='';
   document.getElementById('payDate').value=today();
+  document.getElementById('payNote').value='';
   document.getElementById('payOverlay').style.display='flex';
   pushModalState('payOverlay');
 }
@@ -2071,7 +2376,8 @@ async function confirmPayment(){
   const rem=remaining(d);
   if(amt>rem+0.004){ amt=rem; await appAlert(`That's more than what's owed — recording ${money(rem)} AFN to fully settle this debt.`); }
   d.payments=d.payments||[];
-  d.payments.push({id:uid(),date,amount:amt});
+  const payNote=document.getElementById('payNote').value.trim();
+  d.payments.push({id:uid(),date,amount:amt,note:payNote});
   if(remaining(d)<=0.004){ d.settled=true; d.settledAt=new Date().toISOString(); }
   closePayModal();
   save(d);renderAll();
@@ -2092,62 +2398,68 @@ let statementId=null;
 function openStatement(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   statementId=id;
-  document.getElementById('stTitle').textContent='📄 Statement';
+  document.getElementById('stTitle').textContent='Customer Account';
   const items=itemsOf(d).slice().sort((a,b)=>(a.dateGiven||'').localeCompare(b.dateGiven||''));
   const itemsHtml=items.length ? items.map(it=>`
-    <div class="debtCard glass" style="margin-bottom:8px;padding:12px 14px">
-      <div class="debtTop">
-        <div style="min-width:0"><div style="font-weight:700;font-size:13.5px">${escapeHtml(it.description||'Debt')}</div>
-          <div class="small">Given: ${it.dateGiven||'—'}${it.dueDate?' · Due: '+it.dueDate:''}</div>
-        </div>
-        <div class="debtAmt"><div class="rem" style="font-size:15px">${money(Number(it.amount||0)+Number(it.extra||0))} AFN</div>${it.extra?`<div class="of">incl. ${money(it.extra)} extra</div>`:''}</div>
-      </div>
-      <div class="debtActions" style="margin-top:8px">
-        <button type="button" class="secondaryBtn" onclick="openEditItemModal('${d.id}','${it.id}')">✏️ Edit</button>
-        <button type="button" class="dangerBtn" onclick="deleteItem('${d.id}','${it.id}')">🗑 Remove</button>
-      </div>
-    </div>`).join('') : '<div class="empty">No debts listed yet — add one below.</div>';
-  const pays=(d.payments||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    <div class="cRow">
+      <div class="cIco">🧾</div>
+      <div class="cMain"><div class="cTitle">${escapeHtml(it.description||'Debt')}</div>
+        <div class="cSub">${it.dateGiven||'—'}${it.dueDate?' · due '+it.dueDate:''}${it.extra?' · incl. '+money(it.extra)+' extra':''}</div></div>
+      <div class="cAmt">${money(Number(it.amount||0)+Number(it.extra||0))}</div>
+      <div class="cMini"><button type="button" onclick="openEditItemModal('${d.id}','${it.id}')" aria-label="Edit">✏️</button><button type="button" onclick="deleteItem('${d.id}','${it.id}')" aria-label="Remove">🗑</button></div>
+    </div>`).join('') : '<div class="cEmpty">No debts listed yet</div>';
+  const pays=(d.payments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   let paysChanged=false;
   pays.forEach(p=>{ if(!p.id){ p.id=uid(); paysChanged=true; } });
   if(paysChanged) save(d);
   const payHtml=pays.length
-    ? pays.map(p=>`<div class="payHistItem"><span style="font-weight:600">${p.date}</span><span style="color:#139a5c;font-weight:800;font-size:14px">+ ${money(p.amount)} AFN</span><button type="button" class="payDelBtn" onclick="deletePayment('${d.id}','${p.id}')" aria-label="Delete payment">🗑</button></div>`).join('')
-    : '<div class="small">No payments recorded yet.</div>';
+    ? pays.map(p=>`<div class="cRow"><div class="cIco in">✓</div><div class="cMain"><div class="cTitle">${p.date}</div>${p.note?`<div class="cSub">${escapeHtml(p.note)}</div>`:''}</div><div class="cAmt in">+ ${money(p.amount)}</div><div class="cMini"><button type="button" onclick="deletePayment('${d.id}','${p.id}')" aria-label="Delete payment">🗑</button></div></div>`).join('')
+    : '<div class="cEmpty">No payments received yet</div>';
   const dueDate=nextDueDate(d), dateGiven=latestDateGiven(d);
+  const stat=isSettled(d)?['Settled','ok']:(isOverdue(d)?['Overdue '+daysOverdue(d)+'d','bad']:['Active','warn']);
+  const tot=totalDue(d), pd=paidSoFar(d), pct=tot>0?Math.min(100,pd/tot*100):0;
   document.getElementById('stBody').innerHTML=`
-    <div style="font-size:26px;font-weight:800;line-height:1.2;word-break:break-word">${escapeHtml(d.name)}</div>
-    <div style="font-size:10.5px;line-height:1.4;opacity:.6;margin:3px 0 12px">${d.phone?escapeHtml(d.phone):''}${d.phone&&d.address?' · ':''}${d.address?escapeHtml(d.address):''}</div>
-    <div style="border-radius:20px;padding:16px 18px;color:#fff;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 8px 20px rgba(24,40,74,.25);margin-bottom:10px">
-      <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.9">TOTAL</div>
-      <div style="font-size:32px;font-weight:800;margin-top:4px;line-height:1.1;word-break:break-word">${money(totalDue(d))} <span style="font-size:14px;opacity:.85">AFN</span></div>
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-      <div style="flex:1;border-radius:20px;padding:18px 14px;color:#fff;background:linear-gradient(135deg,#0f7f4d,#1fb577);box-shadow:0 8px 20px rgba(15,127,77,.25)">
-        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.95">RECEIVED</div>
-        <div style="font-size:28px;font-weight:800;margin-top:6px;line-height:1.1;word-break:break-word">${money(paidSoFar(d))}</div>
-        <div style="font-size:12px;font-weight:700;opacity:.95;margin-top:2px">AFN</div>
+    <div class="cHero">
+      <div class="cTop">
+        <div class="avatar lg">${escapeHtml((d.name||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="min-width:0"><div class="cName">${escapeHtml(d.name)}</div>
+        <div class="cMeta">${d.phone?escapeHtml(d.phone):''}${d.phone&&d.address?' · ':''}${d.address?escapeHtml(d.address):''}</div></div>
       </div>
-      <div style="flex:1;border-radius:20px;padding:18px 14px;color:#fff;background:linear-gradient(135deg,#b3202c,#e0525c);box-shadow:0 8px 20px rgba(192,50,61,.28)">
-        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;opacity:.95">${isSettled(d)?'FULLY PAID':'PENDING'}</div>
-        <div style="font-size:28px;font-weight:800;margin-top:6px;line-height:1.1;word-break:break-word">${money(remaining(d))}</div>
-        <div style="font-size:12px;font-weight:700;opacity:.95;margin-top:2px">AFN</div>
+      <div class="cChips">
+        <span class="cChip">${d.direction==='payable'?'You owe them':'They owe you'}</span>
+        <span class="cChip">${d.category==='long'?'Long term':'Short term'}</span>
+        <span class="cChip ${stat[1]}">${stat[0]}</span>
+        ${dueDate?`<span class="cChip">Due ${dueDate}</span>`:''}
+      </div>
+      <div class="balLbl">${isSettled(d)?'Fully paid':'Pending balance'}</div>
+      <div class="balVal ${isSettled(d)?'paid':''}">${money(remaining(d))}<small>AFN</small></div>
+      <div class="prog"><i style="width:${pct.toFixed(0)}%"></i></div>
+      <div class="progCap"><span>${pct.toFixed(0)}% received</span><span>Since ${dateGiven||'—'}</span></div>
+      <div class="tri3">
+        <div><div class="tl">Total</div><div class="tv">${money(tot)}</div></div>
+        <div><div class="tl">Received</div><div class="tv pos">${money(pd)}</div></div>
+        <div><div class="tl">Pending</div><div class="tv neg">${money(remaining(d))}</div></div>
       </div>
     </div>
-    <div class="small" style="opacity:.7;margin-bottom:6px">${d.direction==='payable'?'🔴 You owe them':'🟢 They owe you'} · ${d.category==='long'?'Long Term':'Short Term'}</div>
-    <div class="statRow"><span>Date Given</span><b>${dateGiven||'—'}</b></div>
-    ${dueDate?`<div class="statRow"><span>Due Date</span><b>${dueDate}${isOverdue(d)?' (Overdue '+daysOverdue(d)+'d)':''}</b></div>`:''}
-    <div class="statRow"><span>Status</span><b>${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}</b></div>
-    <h2 style="margin-top:16px;font-size:13.5px">Debts (${items.length})</h2>
-    ${itemsHtml}
-    <button type="button" class="secondaryBtn" style="width:100%" onclick="openAddItemModal('${d.id}')">➕ Add Another Debt</button>
-    <h2 style="margin-top:16px;font-size:13.5px">Payment History</h2>
-    ${payHtml}
-    <div class="debtActions" style="margin-top:14px">
-      <button type="button" class="secondaryBtn" onclick="openPayModal('${d.id}')">💵 Record Payment</button>
-      <button type="button" class="secondaryBtn" onclick="openEditForm('${d.id}')">✏️ Edit Person</button>
-      ${isSettled(d)?`<button type="button" class="secondaryBtn" onclick="reopenDebt('${d.id}');openStatement('${d.id}')">↩ Reopen</button>`:`<button type="button" class="settleBtn" onclick="markSettled('${d.id}');openStatement('${d.id}')">✅ Mark Settled</button>`}
+
+    <div class="qa">
+      <button type="button" class="qaBtn main" onclick="openPayModal('${d.id}')"><div class="qaIcon">💵</div>Payment</button>
+      <button type="button" class="qaBtn" onclick="openAddItemModal('${d.id}')"><div class="qaIcon">➕</div>Add debt</button>
+      <button type="button" class="qaBtn" onclick="openEditForm('${d.id}')"><div class="qaIcon">✏️</div>Edit</button>
+      ${isSettled(d)?`<button type="button" class="qaBtn" onclick="reopenDebt('${d.id}');openStatement('${d.id}')"><div class="qaIcon">↩️</div>Reopen</button>`:`<button type="button" class="qaBtn" onclick="markSettled('${d.id}');openStatement('${d.id}')"><div class="qaIcon">✅</div>Settle</button>`}
     </div>
+
+    <div class="cSec"><span>Debts</span><span>${items.length}</span></div>
+    <div class="cPanel">${itemsHtml}<button type="button" class="cAdd" onclick="openAddItemModal('${d.id}')">+ Add another debt</button></div>
+
+    <div class="cSec"><span>Payments received</span><span>${(d.payments||[]).length}</span></div>
+    <div class="cPanel">${payHtml}</div>
+
+    <div class="stBottom">
+      <button type="button" onclick="copyStatement()">Copy</button>
+      <button type="button" class="pri" onclick="shareStatementImage()">Share as picture</button>
+    </div>
+    <button type="button" class="cDanger" onclick="deleteDebt('${d.id}')">Delete this customer</button>
   `;
   show('statement');
 }
@@ -2166,7 +2478,7 @@ async function copyStatement(){
   txt+=`Paid: ${money(paidSoFar(d))} AFN\n`;
   txt+=`Remaining: ${money(remaining(d))} AFN\n`;
   txt+=`Status: ${isSettled(d)?'Settled':(isOverdue(d)?'Overdue':'Active')}\n`;
-  if(pays.length){ txt+=`\nPayments:\n`; pays.forEach(p=>{ txt+=`  ${p.date}: ${money(p.amount)} AFN\n`; }); }
+  if(pays.length){ txt+=`\nPayments:\n`; pays.forEach(p=>{ txt+=`  ${p.date}: ${money(p.amount)} AFN${p.note?' — '+p.note:''}\n`; }); }
   try{
     await navigator.clipboard.writeText(txt);
     appAlert('Statement copied — you can paste it into WhatsApp, SMS, or anywhere else.');
@@ -2203,7 +2515,7 @@ async function shareStatementImage(){
     return txt+'…';
   };
   const HEAD=200, custH=178+((d.phone?1:0)+(d.address?1:0))*30;
-  const secH=56, itemRowH=74, payRowH=50, sumH=252;
+  const secH=56, itemRowH=74, payRowH=(pays.some(p=>p.note)?66:50), sumH=252;
   const H=HEAD+custH+secH+Math.max(items.length,1)*itemRowH+(pays.length?secH+pays.length*payRowH:0)+sumH+110;
 
   const canvas=document.createElement('canvas');
@@ -2325,7 +2637,10 @@ async function shareStatementImage(){
       glass(pad,ry,inner,rh,16);
       ctx.fillStyle='rgba(19,154,92,.95)'; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,5,0,7); ctx.fill();
       ctx.strokeStyle='rgba(19,154,92,.30)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(pad+28,ry+rh/2,10,0,7); ctx.stroke();
-      text(p.date||'—',pad+52,ry+rh/2+5,`500 17px ${SANS}`,WHITE);
+      if(p.note){
+        text(p.date||'—',pad+52,ry+22,`600 17px ${SANS}`,WHITE);
+        text(fit(p.note,`500 14px ${SANS}`,inner-250),pad+52,ry+42,`500 14px ${SANS}`,SOFT);
+      } else text(p.date||'—',pad+52,ry+rh/2+5,`500 17px ${SANS}`,WHITE);
       text('− '+money(p.amount),W-pad-62,ry+rh/2+6,`700 19px ${SERIF}`,GREEN,'right');
       text('AFN',W-pad-24,ry+rh/2+6,`600 13px ${SANS}`,GREEN,'right','1px');
     });
@@ -2584,8 +2899,8 @@ async function exportBackupExcel(silent,odOnly){
     const ws2=XLSX.utils.json_to_sheet(itemRows.length?itemRows:[{ID:'',Name:'',Description:'',Amount:'','Extra Charge':'','Date Given':'','Due Date':''}]);
     XLSX.utils.book_append_sheet(wb,ws2,'Debts');
     const payRows=[];
-    state.debts.forEach(d=>{ (d.payments||[]).forEach(p=>{ payRows.push({ID:d.id,Name:d.name,'Payment Date':p.date,'Payment Amount':p.amount}); }); });
-    const ws3=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':''}]);
+    state.debts.forEach(d=>{ (d.payments||[]).forEach(p=>{ payRows.push({ID:d.id,Name:d.name,'Payment Date':p.date,'Payment Amount':p.amount,'Payment Note':p.note||''}); }); });
+    const ws3=XLSX.utils.json_to_sheet(payRows.length?payRows:[{ID:'',Name:'','Payment Date':'','Payment Amount':'','Payment Note':''}]);
     XLSX.utils.book_append_sheet(wb,ws3,'Payments');
     const invRows=(state.inventory||[]).map(it=>({ID:it.id,Name:it.name,Quantity:it.qty||0,'Value per Unit':it.unitValue||0,'Total Value':(Number(it.qty)||0)*(Number(it.unitValue)||0)}));
     const ws4=XLSX.utils.json_to_sheet(invRows.length?invRows:[{ID:'',Name:'',Quantity:'','Value per Unit':'','Total Value':''}]);
@@ -2689,7 +3004,7 @@ async function handleRestoreFile(e){
       const d=state.debts.find(x=>x.id===newId);
       if(d && p['Payment Date']!=='' && p['Payment Amount']!==''){
         d.payments=d.payments||[];
-        d.payments.push({date:String(p['Payment Date']),amount:Number(p['Payment Amount'])||0});
+        d.payments.push({id:uid(),date:String(p['Payment Date']),amount:Number(p['Payment Amount'])||0,note:String(p['Payment Note']||'')});
       }
     });
     let restoredInvCount=0, restoredCashCount=0;
