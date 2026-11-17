@@ -1,12 +1,12 @@
 {
-  "name": "Shop Debts",
-  "short_name": "Shop Debts",
-  "description": "Track short-term and long-term customer debts",
+  "name": "STAR SHOP",
+  "short_name": "STAR SHOP",
+  "description": "Daily sales, pricing and profit tracker",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#18284a",
-  "theme_color": "#18284a",
+  "background_color": "#070b1a",
+  "theme_color": "#070b1a",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
