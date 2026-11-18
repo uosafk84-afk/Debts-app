@@ -314,7 +314,7 @@ textarea{resize:vertical;min-height:56px}
 .cMini button:active{background:rgba(120,140,180,.2)}
 .cEmpty{padding:18px 4px;text-align:center;font-size:13px;opacity:.55}
 .cAdd{display:block;width:100%;background:none;border:none;border-top:1px solid var(--sep);padding:13px 0;font-size:13.5px;font-weight:500;color:#3a74e8;cursor:pointer}
-.cDanger{display:block;margin:26px auto 4px;background:none;border:none;color:var(--negC);font-size:13px;font-weight:500;opacity:.85;cursor:pointer;padding:8px 14px}
+.cDanger{display:block;margin:22px auto 2px;background:none;border:none;color:var(--negC);font-size:13px;font-weight:500;opacity:.85;cursor:pointer;padding:8px 14px}
 .stBottom{display:flex;gap:10px;margin-top:18px}
 .stBottom button{flex:1;border-radius:14px;padding:12px 8px;font-size:13.5px;font-weight:500;cursor:pointer;border:1px solid var(--glassBorder);background:var(--glass);color:var(--text)}
 .stBottom button.pri{background:linear-gradient(135deg,#2d4a8a,var(--navy));color:#fff;border-color:transparent}
@@ -2343,6 +2343,16 @@ async function deleteDebt(id){
   renderAll();
   show(lastListView||'dashboard');
 }
+async function clearCustomerRecords(id){
+  const d=state.debts.find(x=>x.id===id); if(!d) return;
+  const nItems=itemsOf(d).length, nPays=(d.payments||[]).length;
+  if(!nItems && !nPays){ await appAlert('There is nothing to clear — '+d.name+' has no debts or payments.'); return; }
+  const ok=await appConfirm(`Clear ALL records for ${d.name}?\n\n${nItems} debt${nItems===1?'':'s'} (${money(totalDue(d))} AFN) and ${nPays} payment${nPays===1?'':'s'} (${money(paidSoFar(d))} AFN) will be removed.\n\n${d.name} stays in your customer list with their name, phone and address, ready for new debts.\n\nThis cannot be undone.`);
+  if(!ok) return;
+  d.items=[]; d.payments=[]; d.settled=false;
+  save(d);
+  renderAll(); openStatement(id);
+}
 async function markSettled(id){
   const d=state.debts.find(x=>x.id===id); if(!d) return;
   const ok=await appConfirm(`Mark ${d.name}'s debt as fully settled?\n\nRemaining shown: ${money(remaining(d))} AFN`);
@@ -2459,7 +2469,8 @@ function openStatement(id){
       <button type="button" onclick="copyStatement()">Copy</button>
       <button type="button" class="pri" onclick="shareStatementImage()">Share as picture</button>
     </div>
-    <button type="button" class="cDanger" onclick="deleteDebt('${d.id}')">Delete this customer</button>
+    <button type="button" class="cDanger" style="color:#b0720d;margin-bottom:0" onclick="clearCustomerRecords('${d.id}')">🧹 Clear all debts &amp; payments (keep customer)</button>
+    <button type="button" class="cDanger" style="margin-top:2px" onclick="deleteDebt('${d.id}')">Delete this customer</button>
   `;
   show('statement');
 }
