@@ -635,6 +635,22 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 
 @keyframes riseIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 #backupBanner{border-radius:18px !important}
+
+/* SEARCH: sits at the TOP so the keyboard never covers it; bigger, easier to read */
+#searchOverlay{align-items:flex-start!important;padding:max(8px,env(safe-area-inset-top)) 8px 8px}
+#searchOverlay .searchBox{max-width:560px!important;width:100%;max-height:calc(100dvh - 16px);display:flex;flex-direction:column;border-radius:22px;padding:14px 14px 10px}
+.sbHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-weight:800;font-size:18px}
+.sbClose{border:none;background:var(--inputBg,rgba(0,0,0,.06));padding:9px 14px;border-radius:12px;font-size:15px;font-weight:700;color:inherit;cursor:pointer}
+.sbInput{width:100%;box-sizing:border-box;font-size:20px!important;padding:15px 16px!important;border-radius:16px!important;margin-bottom:10px}
+.sbResults{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sbResults .payHistItem{font-size:18px;font-weight:600;padding:15px 12px;margin-bottom:8px;border-radius:14px;gap:10px;line-height:1.3}
+.sbResults .payHistItem b{font-size:18px;white-space:nowrap}
+.sbResults .small{font-size:15px!important;letter-spacing:.04em;margin:12px 0 6px!important}
+.sbResults .payHistItem span{color:var(--text,#0f1b33)!important;font-weight:700}
+.sbResults .empty{font-size:16px;padding:18px 6px}
+/* in-page search bars: larger text, and kept visible above the keyboard */
+.searchBar input{font-size:19px!important;padding:14px 16px!important;border-radius:16px!important}
+.searchBar{scroll-margin-top:84px}
 </style>
 </head>
 <body>
@@ -759,13 +775,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 
   </div>
 </div>
 <div id="searchOverlay" class="modalOverlay" style="display:none">
-  <div class="modalBox glass" style="max-width:400px;text-align:left">
-    <div style="font-weight:700;font-size:15px;margin-bottom:10px">🔍 Search Everything</div>
-    <input type="text" id="globalSearchInput" placeholder="Customer name, phone, product, or cash note…" style="width:100%;margin-bottom:10px" oninput="runGlobalSearch()">
-    <div id="globalSearchResults" style="max-height:50vh;overflow-y:auto"></div>
-    <div class="modalBtns">
-      <button class="mbSecondary" onclick="closeSearchModal()">Close</button>
-    </div>
+  <div class="modalBox glass searchBox">
+    <div class="sbHead"><span>🔍 Search</span><button type="button" class="sbClose" onclick="closeSearchModal()">Close ✕</button></div>
+    <input type="search" id="globalSearchInput" class="sbInput" placeholder="Name, phone, product, note…" autocomplete="off" enterkeyhint="search" oninput="runGlobalSearch()">
+    <div id="globalSearchResults" class="sbResults"></div>
   </div>
 </div>
 <div id="saveToast" class="saveToast">✓ Saved</div>
@@ -942,6 +955,28 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 
 <div class="formActions" style="margin-top:8px">
 <button type="button" class="secondaryBtn" id="odNowBtn" style="flex:1;display:none" onclick="odBackupNowClick()">⬆️ Back Up Now</button>
 <button type="button" class="secondaryBtn" id="odDisconnectBtn" style="flex:1;display:none" onclick="odDisconnectClick()">Disconnect</button>
+</div>
+</div>
+<div class="section glass">
+<h2>📄 Google Auto-Backup</h2>
+<p class="small">Every automatic backup (every 12 hours) is also sent to your Google account as a <b>Google Sheet</b> inside a Drive folder called <b>Shop Debts Backups</b>. You can open it in Google Docs/Sheets from any phone. If you are offline, it waits and uploads when internet returns.</p>
+<p class="small" style="white-space:pre-line;font-weight:700" id="gdStatus"></p>
+<details style="margin:8px 0"><summary class="small" style="cursor:pointer;font-weight:700">One-time setup (free, about 5 minutes)</summary>
+<ol class="small" style="padding-left:18px;margin:8px 0">
+<li>Open <b>console.cloud.google.com</b> and sign in. Create a <b>New Project</b> (name: Shop Debts).</li>
+<li>Menu → <b>APIs &amp; Services → Library</b> → search <b>Google Drive API</b> → <b>Enable</b>.</li>
+<li><b>OAuth consent screen</b> (or "Google Auth Platform"): choose <b>External</b>, fill the app name and your email. Under <b>Test users</b> add your own Gmail address. Save.</li>
+<li><b>Credentials → Create credentials → OAuth client ID</b> → type <b>Web application</b>. Under <b>Authorized JavaScript origins</b> add the address below. Create.</li>
+<li>Copy the <b>Client ID</b> (ends with <i>.apps.googleusercontent.com</i>) and paste it here.</li>
+</ol>
+<div class="small">Address to enter as Authorized JavaScript origin:</div>
+<div class="small" id="gdOriginShow" style="font-weight:700;word-break:break-all;user-select:all"></div>
+</details>
+<input type="text" id="gdClientId" style="width:100%;box-sizing:border-box;border-radius:10px;padding:8px" placeholder="Client ID (…apps.googleusercontent.com)" autocomplete="off">
+<button type="button" class="primary" id="gdConnectBtn" style="margin-top:10px" onclick="gdConnectClick()">🔗 Connect Google</button>
+<div class="formActions" style="margin-top:8px">
+<button type="button" class="secondaryBtn" id="gdNowBtn" style="flex:1;display:none" onclick="gdBackupNowClick()">⬆️ Back Up Now</button>
+<button type="button" class="secondaryBtn" id="gdDisconnectBtn" style="flex:1;display:none" onclick="gdDisconnectClick()">Disconnect</button>
 </div>
 </div>
 <div class="section glass">
@@ -1420,7 +1455,7 @@ async function init(){
   restoreBackupFolderHandle();
   restoreCloudSettingsOnLoad();
   initAppearance();
-  odInit();
+  odInit(); gdRenderUI();
 }
 // ---------- OneDrive automatic backup (Microsoft Graph, app-folder only) ----------
 // Files go to  OneDrive > Apps > <your app's name>.  The app can only see its own folder.
@@ -1541,10 +1576,115 @@ async function odDisconnectClick(){
   [OD_TOK_KEY,OD_PEND_KEY,OD_MSG_KEY,OD_LAST_KEY].forEach(odLS.del); odRenderUI();
 }
 window.addEventListener('online',()=>{ odRetryPending(); });
+// ---------- Google Drive auto-backup (uploads each backup as a Google Sheet) ----------
+const GD_CLIENT_KEY='shop_debts_gd_client', GD_ON_KEY='shop_debts_gd_on', GD_TOK_KEY='shop_debts_gd_tok',
+      GD_PEND_KEY='shop_debts_gd_pending', GD_LAST_KEY='shop_debts_gd_lastOk', GD_MSG_KEY='shop_debts_gd_msg', GD_FOLDER_KEY='shop_debts_gd_folder';
+const GD_SCOPE='https://www.googleapis.com/auth/drive.file';
+function gdConnected(){ return odLS.get(GD_ON_KEY)==='1' && !!odLS.get(GD_CLIENT_KEY); }
+function gdLoadGIS(){
+  return new Promise((res,rej)=>{
+    if(window.google&&google.accounts&&google.accounts.oauth2) return res();
+    const sc=document.createElement('script'); sc.src='https://accounts.google.com/gsi/client'; sc.async=true;
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error('Could not load Google sign-in (check internet).'));
+    document.head.appendChild(sc);
+  });
+}
+// interactive=true shows the Google account/consent popup; false tries quietly (works while Google is still signed in on this phone).
+async function gdAccessToken(interactive){
+  let t=null; try{ t=JSON.parse(odLS.get(GD_TOK_KEY)||'null'); }catch(e){}
+  if(t && t.access && Date.now()<t.exp-60000) return t.access;
+  await gdLoadGIS();
+  return new Promise((resolve,reject)=>{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:odLS.get(GD_CLIENT_KEY), scope:GD_SCOPE,
+      callback:r=>{
+        if(r.error||!r.access_token){ const e=new Error(r.error||'no token'); e.needsAuth=true; return reject(e); }
+        odLS.set(GD_TOK_KEY,JSON.stringify({access:r.access_token,exp:Date.now()+(Number(r.expires_in)||3600)*1000}));
+        resolve(r.access_token);
+      },
+      error_callback:e=>{ const x=new Error((e&&e.type)||'popup'); x.needsAuth=true; reject(x); }
+    });
+    tc.requestAccessToken({prompt:interactive?'select_account':'none'});
+    if(!interactive) setTimeout(()=>{ const x=new Error('timeout'); x.needsAuth=true; reject(x); },15000);
+  });
+}
+async function gdApi(url,opts,interactive){
+  for(let attempt=0;attempt<2;attempt++){
+    const tok=await gdAccessToken(interactive);
+    const r=await fetch(url,Object.assign({},opts,{headers:Object.assign({Authorization:'Bearer '+tok},opts&&opts.headers||{})}));
+    if(r.ok) return r;
+    if(r.status===401 && attempt===0){ odLS.del(GD_TOK_KEY); continue; }
+    let m=''; try{ m=(await r.json()).error.message; }catch(e){}
+    throw new Error('Google said '+r.status+(m?': '+m:''));
+  }
+}
+async function gdFolderId(interactive){
+  let id=odLS.get(GD_FOLDER_KEY);
+  if(id){ try{ const r=await gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?fields=id,trashed',{},interactive); const j=await r.json(); if(!j.trashed) return id; }catch(e){ if(e.needsAuth) throw e; } }
+  const r=await gdApi('https://www.googleapis.com/drive/v3/files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:'Shop Debts Backups',mimeType:'application/vnd.google-apps.folder'})},interactive);
+  id=(await r.json()).id; odLS.set(GD_FOLDER_KEY,id); return id;
+}
+async function gdUpload(name,buf,interactive){
+  const folder=await gdFolderId(interactive);
+  const title=name.replace(/\.xlsx$/,'').replace(/_/g,' ')+' '+(new Date().getHours()<12?'AM':'PM');
+  const meta={name:title,parents:[folder],mimeType:'application/vnd.google-apps.spreadsheet'};
+  const b='shopdebts'+Date.now();
+  const enc=new TextEncoder();
+  const head=enc.encode('--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+b+'\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n');
+  const tail=enc.encode('\r\n--'+b+'--');
+  const body=new Blob([head,buf,tail]);
+  await gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body},interactive);
+}
+async function gdSync(name,buf,interactive){
+  if(!gdConnected()) return;
+  if(!navigator.onLine){ odLS.set(GD_PEND_KEY,'1'); gdRenderUI(); return; }
+  try{ await gdUpload(name,buf,!!interactive); odLS.del(GD_PEND_KEY); odLS.set(GD_LAST_KEY,String(Date.now())); odLS.del(GD_MSG_KEY); }
+  catch(e){
+    odLS.set(GD_PEND_KEY,'1');
+    odLS.set(GD_MSG_KEY,e.needsAuth?'Google needs a quick tap to continue — open Backup and press "Back Up Now".':('Last upload failed — will retry. '+e.message));
+  }
+  gdRenderUI();
+}
+function gdRetryPending(){ if(gdConnected() && odLS.get(GD_PEND_KEY)==='1' && navigator.onLine) exportBackupExcel(true,true); }
+function gdRenderUI(){
+  const el=document.getElementById('gdStatus'); if(!el) return;
+  const cid=document.getElementById('gdClientId'); if(cid && !cid.value) cid.value=odLS.get(GD_CLIENT_KEY)||'';
+  const o=document.getElementById('gdOriginShow'); if(o) o.textContent=location.origin;
+  const c=gdConnected(), last=Number(odLS.get(GD_LAST_KEY))||0, msg=odLS.get(GD_MSG_KEY);
+  let t=!c?'Not connected.':'✅ Connected.'+(last?' Last upload: '+new Date(last).toLocaleString():' Waiting for the first upload.')+(odLS.get(GD_PEND_KEY)==='1'?' (An upload is waiting.)':'');
+  if(msg) t+='\n⚠️ '+msg;
+  el.textContent=t;
+  const b=document.getElementById('gdConnectBtn'); if(b) b.textContent=c?'🔄 Reconnect Google':'🔗 Connect Google';
+  ['gdNowBtn','gdDisconnectBtn'].forEach(id=>{ const x=document.getElementById(id); if(x) x.style.display=c?'':'none'; });
+}
+async function gdConnectClick(){
+  const cid=document.getElementById('gdClientId').value.trim();
+  if(!/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(cid)){ appAlert('Please paste the Client ID from Google Cloud first — it ends with .apps.googleusercontent.com'); return; }
+  if(!navigator.onLine){ appAlert('You need internet to sign in to Google.'); return; }
+  odLS.set(GD_CLIENT_KEY,cid); odLS.set(GD_ON_KEY,'1'); odLS.del(GD_TOK_KEY); odLS.del(GD_FOLDER_KEY);
+  try{ await gdAccessToken(true); }
+  catch(e){ odLS.del(GD_ON_KEY); gdRenderUI(); appAlert('Google sign-in did not finish ('+e.message+'). Check the Client ID and that your Gmail is added as a Test user, then try again.'); return; }
+  gdRenderUI();
+  await gdBackupNowClick();
+}
+async function gdBackupNowClick(){
+  if(!navigator.onLine){ await appAlert('No internet right now — it will upload when you are back online.'); odLS.set(GD_PEND_KEY,'1'); gdRenderUI(); return; }
+  window.__gdInteractive=true;
+  await exportBackupExcel(true,true);
+  window.__gdInteractive=false;
+  gdRenderUI();
+  appAlert(odLS.get(GD_PEND_KEY)==='1'?('Upload did not go through yet.\n'+(odLS.get(GD_MSG_KEY)||'')):'Backup uploaded to Google Drive ✅ (folder: Shop Debts Backups).');
+}
+async function gdDisconnectClick(){
+  if(!await appConfirm('Disconnect Google? Backups already in your Google Drive stay there.')) return;
+  [GD_ON_KEY,GD_TOK_KEY,GD_PEND_KEY,GD_MSG_KEY,GD_LAST_KEY,GD_FOLDER_KEY].forEach(odLS.del); gdRenderUI();
+}
+window.addEventListener('online',()=>{ gdRetryPending(); });
 const AUTO_BACKUP_KEY='shop_debts_lastAutoBackup';
 const AUTO_BACKUP_MS=12*60*60*1000;
 async function autoBackupIfDue(){
-  odRetryPending();
+  odRetryPending(); gdRetryPending();
   try{
     const last=Number(await storageGet(AUTO_BACKUP_KEY))||0;
     if(Date.now()-last < AUTO_BACKUP_MS) return;
@@ -2173,6 +2313,9 @@ async function quickAddAction(action){
     document.getElementById('portfolio').scrollIntoView({behavior:'smooth'});
   }
 }
+document.addEventListener('focusin',e=>{
+  const t=e.target; if(t&&t.closest&&t.closest('.searchBar')){ setTimeout(()=>{ try{ t.closest('.searchBar').scrollIntoView({block:'start',behavior:'smooth'}); }catch(_){} },320); }
+});
 function openSearchModal(){
   document.getElementById('globalSearchInput').value='';
   document.getElementById('globalSearchResults').innerHTML='<div class="empty">Start typing to search customers, products, and cash notes.</div>';
@@ -2937,7 +3080,11 @@ async function exportBackupExcel(silent,odOnly){
       }catch(e){ /* the Downloads copy already saved, so this is non-fatal */ }
     }
     if(!odOnly){ storageSet(AUTO_BACKUP_KEY,String(Date.now())); updateBackupBanner(); }
-    if(odConnected()) await odSync(fname,XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+    if(odConnected() || gdConnected()){
+      const upBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+      if(odConnected()) await odSync(fname,upBuf);
+      if(gdConnected()) await gdSync(fname,upBuf,window.__gdInteractive);
+    }
   }catch(err){ if(!silent) appAlert('Could not create the backup file: '+err.message); }
 }
 async function handleRestoreFile(e){
