@@ -1,0 +1,8 @@
+The offline app bundles:
+
+- Firebase JavaScript SDK 9.23.0 (Firebase app, auth, and Firestore compat builds).
+  Licensed under Apache-2.0; see FIREBASE-LICENSE.txt.
+- SheetJS Community Edition 0.18.5.
+  Licensed under Apache-2.0; see SHEETJS-LICENSE.txt.
+- Capacitor Filesystem and Share plugins are installed from npm and built into
+  the Android application. Both are MIT-licensed.

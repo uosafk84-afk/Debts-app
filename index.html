@@ -25,7 +25,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Shop Debts">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="vendor/xlsx.full.min.js" defer></script>
+<script src="vendor/firebase-app-compat.js" defer></script>
+<script src="vendor/firebase-auth-compat.js" defer></script>
+<script src="vendor/firebase-firestore-compat.js" defer></script>
+<script src="vendor/native-backup.js" defer></script>
 <style>
 :root{
   --bg:#eef1f6; --surface:#FFFFFF;
@@ -1133,9 +1137,9 @@ async function loadFirebaseSDK(){
   if(window.firebase && window.firebase.firestore && window.firebase.auth) return true;
   try{
     for(const src of [
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'
+      'vendor/firebase-app-compat.js',
+      'vendor/firebase-auth-compat.js',
+      'vendor/firebase-firestore-compat.js'
     ]){
       await new Promise((resolve,reject)=>{
         const s=document.createElement('script');
@@ -3036,7 +3040,7 @@ async function loadXLSX(){
 async function exportBackupExcel(silent,odOnly){
   try{
     await loadXLSX();
-    if(!window.XLSX){ if(!silent) await appAlert('Could not load the Excel export library. Check your internet connection and try again.'); return; }
+    if(!window.XLSX){ if(!silent) await appAlert('Could not load the Excel export library.'); return; }
     const wb=XLSX.utils.book_new();
     const summaryRows=state.debts.map(d=>({
       ID:d.id,Name:d.name,Phone:d.phone||'',Address:d.address||'',
@@ -3066,7 +3070,21 @@ async function exportBackupExcel(silent,odOnly){
     const ws6=XLSX.utils.json_to_sheet(snapRows.length?snapRows:[{Date:'',Cash:'','Inventory Value':'',Receivables:'',Payables:'','Net Worth':''}]);
     XLSX.utils.book_append_sheet(wb,ws6,'NetWorthHistory');
     const fname=`Shop_Debts_Backup_${today()}.xlsx`;
-    if(!odOnly) XLSX.writeFile(wb,fname);
+    if(!odOnly){
+      const nativeAndroid=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.getPlatform()==='android';
+      if(nativeAndroid){
+        if(silent){
+          if(typeof window.saveNativeBackup!=='function') throw new Error('Android backup storage is unavailable.');
+        }else if(typeof window.shareNativeBackup!=='function'){
+          throw new Error('Android backup sharing is unavailable.');
+        }
+        const outBase64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
+        if(silent) await window.saveNativeBackup(fname,outBase64);
+        else await window.shareNativeBackup(fname,outBase64);
+      }else{
+        XLSX.writeFile(wb,fname);
+      }
+    }
     if(backupDirHandle && !odOnly){
       try{
         const outBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
@@ -3203,7 +3221,8 @@ async function handleRestoreFile(e){
 }
 
 if(document.readyState==='complete'){ init(); } else { window.addEventListener('load',init); }
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{
+const runningInNativeApp=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+if(!runningInNativeApp&&'serviceWorker' in navigator){window.addEventListener('load',()=>{
   navigator.serviceWorker.register('sw.js').then(reg=>{
     // Android can otherwise wait up to 24h before checking for a new version.
     // Ask right away (and every hour the app stays open) so fixes/updates take

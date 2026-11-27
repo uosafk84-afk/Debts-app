@@ -1,0 +1,74 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare offline app files
+        run: |
+          npm run build:web
+          npx cap sync android
+          npm test
+
+      - name: Build signed APK
+        id: version
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?Set the ANDROID_KEYSTORE_BASE64 repository secret}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Set the ANDROID_KEYSTORE_PASSWORD repository secret}"
+          keystore_password="$(printf '%s' "$ANDROID_KEYSTORE_PASSWORD" | tr -d '\r\n')"
+          version_code=$((GITHUB_RUN_NUMBER * 10000 + GITHUB_RUN_ATTEMPT))
+          version_name="1.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/debtsapp-release.jks"
+          chmod 600 "$RUNNER_TEMP/debtsapp-release.jks"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v$version_name" >> "$GITHUB_OUTPUT"
+          cd android
+          chmod +x gradlew
+          ANDROID_VERSION_CODE="$version_code" \
+          ANDROID_VERSION_NAME="$version_name" \
+          ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/debtsapp-release.jks" \
+          ANDROID_KEYSTORE_PASSWORD="$keystore_password" \
+            ./gradlew assembleRelease
+
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_PATH: android/app/build/outputs/apk/release/app-release.apk
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+        run: |
+          gh release create "$RELEASE_TAG" "$APK_PATH" \
+            --title "Shop Debts $VERSION_NAME" \
+            --notes "Signed Android APK. Install over previous releases to keep app data."

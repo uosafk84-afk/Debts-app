@@ -1,0 +1,6 @@
+{
+  "appId": "com.debtsapp.app",
+  "appName": "Shop Debts",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

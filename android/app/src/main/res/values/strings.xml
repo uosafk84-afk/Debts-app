@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Shop Debts</string>
+    <string name="title_activity_main">Shop Debts</string>
+    <string name="package_name">com.debtsapp.app</string>
+    <string name="custom_url_scheme">com.debtsapp.app</string>
+</resources>
