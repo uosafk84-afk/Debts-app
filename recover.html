@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shop Debts — Data Recovery</title>
+<script src="vendor/native-backup.js" defer></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:20px;background:#111;color:#eee}
 h1{font-size:18px}
@@ -56,10 +57,17 @@ function render(){
   const btn1=document.createElement('button');
   btn1.textContent='⬇️ Download this data as a backup file (.json)';
   btn1.onclick=()=>{
+    const fileName='shop_debts_recovered_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+    const nativeAndroid=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.getPlatform()==='android';
+    if(nativeAndroid&&typeof window.shareNativeBackup==='function'){
+      const base64=btoa(unescape(encodeURIComponent(raw)));
+      window.shareNativeBackup(fileName,base64).catch(error=>alert('Could not share the backup: '+error.message));
+      return;
+    }
     const blob=new Blob([raw],{type:'application/json'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
-    a.download='shop_debts_recovered_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+    a.download=fileName;
     document.body.appendChild(a); a.click(); a.remove();
   };
   actionsEl.appendChild(btn1);
